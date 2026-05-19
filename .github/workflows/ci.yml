@@ -72,7 +72,7 @@ jobs:
 
       - name: Prepare remote directory
         run: |
-          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "find ${{ secrets.ALWAYSDATA_PATH }} -mindepth 1 -delete 2>/dev/null; mkdir -p ${{ secrets.ALWAYSDATA_PATH }}; echo ok"
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "find ${{ secrets.ALWAYSDATA_PATH }} -mindepth 1 -not -name 'place.db' -delete 2>/dev/null; mkdir -p ${{ secrets.ALWAYSDATA_PATH }}; echo ok"
 
       - name: Deploy to AlwaysData
         run: |
