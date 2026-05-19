@@ -3,7 +3,7 @@ import os
 from flask import Flask, jsonify, render_template
 from pydantic import ValidationError
 
-from .config import Config, TestConfig
+from .config import Config, ProdConfig, TestConfig
 from .database import db
 from .models import Classe
 from .place import place_bp
@@ -31,7 +31,15 @@ def create_app(testing=False):
         template_folder=os.path.join(_root, 'templates'),
         static_folder=os.path.join(_root, 'static'),
     )
-    config_class = TestConfig if testing else Config
+
+    env = os.environ.get("FLASK_ENV", "development")
+    if testing:
+        config_class = TestConfig
+    elif env == "production":
+        config_class = ProdConfig
+    else:
+        config_class = Config
+
     app.config.from_object(config_class)
 
     db.init_app(app)
