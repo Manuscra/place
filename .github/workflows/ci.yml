@@ -86,5 +86,7 @@ jobs:
             --exclude '__pycache__' \
             --exclude 'place.db' \
             --exclude '.gitignore' \
+            --exclude 'env/' \
+            --exclude 'passenger_wsgi.py' \
             ./ \
             "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}:${{ secrets.ALWAYSDATA_PATH }}"
