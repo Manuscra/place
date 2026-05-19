@@ -15,11 +15,14 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{_base}/place.db")
 try:
     from src.app import create_app
     app = create_app()
-except Exception as e:
-    # Fallback minimal si l'import échoue — aide au debug
+except Exception:
+    import traceback
+
     from flask import Flask
+
+    _tb = traceback.format_exc()
     app = Flask(__name__)
 
     @app.route("/")
     def debug_error():
-        return f"<pre>Erreur démarrage: {e}</pre>", 500
+        return f"<pre>Erreur démarrage:\n{_tb}</pre>", 500
