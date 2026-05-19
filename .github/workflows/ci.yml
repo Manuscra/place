@@ -70,6 +70,10 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
+      - name: Fix remote permissions
+        run: |
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "chmod -R u+w ${{ secrets.ALWAYSDATA_PATH }} 2>/dev/null; chmod -R u+w /tmp 2>/dev/null; echo ok"
+
       - name: Create remote directory
         run: |
           sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "mkdir -p ${{ secrets.ALWAYSDATA_PATH }}"
