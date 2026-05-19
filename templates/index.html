@@ -2,15 +2,28 @@
 {% block title %}Accueil - Place{% endblock %}
 {% block content %}
 <div class="text-center py-16">
-    <h1 class="text-4xl font-bold text-gray-900 mb-4">Gestion d'équipe</h1>
-    <p class="text-lg text-gray-600 mb-10">Gérez vos équipes et leurs membres simplement.</p>
-    <div class="flex justify-center gap-6">
-        <a href="/teams" class="rounded-lg bg-indigo-600 px-8 py-3 text-white font-medium hover:bg-indigo-700 transition">
-            Voir les équipes
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">Gestion Scolaire</h1>
+    <p class="text-lg text-gray-600 mb-10">Plateforme de gestion des élèves et des documents</p>
+
+    <div class="flex flex-col gap-5 max-w-lg mx-auto">
+        <a href="/place" class="rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 text-white p-8 no-underline transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-rose-500/20 text-left">
+            <h2 class="text-xl font-semibold mb-2.5">👥 Distribution par Groupes</h2>
+            <p class="opacity-90 text-sm">Affecter les élèves aux différents groupes de manière organisée</p>
         </a>
-        <a href="/members" class="rounded-lg border border-indigo-600 px-8 py-3 text-indigo-600 font-medium hover:bg-indigo-50 transition">
-            Voir les membres
+
+        <a href="/classes" class="rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white p-8 no-underline transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-indigo-500/20 text-left">
+            <h2 class="text-xl font-semibold mb-2.5">📚 Gestion des Classes</h2>
+            <p class="opacity-90 text-sm">Créer et administrer les classes</p>
         </a>
+
+        <a href="/eleves" class="rounded-xl bg-gradient-to-br from-sky-400 to-cyan-400 text-white p-8 no-underline transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-cyan-400/20 text-left">
+            <h2 class="text-xl font-semibold mb-2.5">🎓 Gestion des Élèves</h2>
+            <p class="opacity-90 text-sm">Gérer les élèves individuellement</p>
+        </a>
+    </div>
+
+    <div class="mt-12 pt-5 border-t border-gray-200">
+        <p class="text-gray-400 text-sm">© 2026 - Plateforme de Gestion Scolaire</p>
     </div>
 </div>
 {% endblock %}

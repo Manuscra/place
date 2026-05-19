@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+{% block title %}Répartition des élèves - Place{% endblock %}
+{% block head_extra %}
+<style>
+    .group-box { min-height: 320px; }
+    .students-zone {
+        min-height: 220px;
+        border: 2px dashed #d0d0d0;
+        border-radius: 6px;
+        padding: 10px;
+        background: #fafafa;
+        transition: 0.2s;
+    }
+    .students-zone.drag-over {
+        background: #e8f4ff;
+        border-color: #3498db;
+    }
+    .student-card {
+        padding: 10px;
+        margin-bottom: 8px;
+        border-radius: 5px;
+        color: white;
+        cursor: grab;
+        user-select: none;
+    }
+    .student-card:active { cursor: grabbing; }
+    .student-card:nth-child(odd) { background: #3498db; }
+    .student-card:nth-child(even) { background: #2ecc71; }
+    .badge {
+        background: #3498db;
+        color: white;
+        border-radius: 20px;
+        padding: 2px 10px;
+        font-size: 12px;
+    }
+    .rename-input {
+        width: 140px;
+        padding: 4px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-900">Répartition des élèves</h2>
+        <p class="text-sm text-gray-500 mt-1">Double-cliquez sur un nom de groupe pour le renommer.</p>
+    </div>
+
+    <div class="flex gap-3">
+        <button id="addGroup" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition">
+            + Ajouter un groupe
+        </button>
+        <button id="removeGroup" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+            - Supprimer le dernier
+        </button>
+    </div>
+
+    <div id="groupsContainer" class="flex flex-wrap gap-5"></div>
+
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">Élèves non affectés</h3>
+            <select id="classSelect" class="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- Sélectionnez une classe --</option>
+            </select>
+        </div>
+        <div class="students-zone" id="unassigned"></div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const container = document.getElementById('groupsContainer');
+const unassigned = document.getElementById('unassigned');
+const classSelect = document.getElementById('classSelect');
+let groupCount = 0;
+let draggedStudent = null;
+let currentEleves = [];
+
+// =====================================
+// API
+// =====================================
+async function api(url, opts = {}) {
+    const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json', ...opts.headers },
+        ...opts
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+}
+
+// =====================================
+// CHARGEMENT CLASSES
+// =====================================
+async function loadClasses() {
+    const classes = await api('/api/classes');
+    classSelect.innerHTML = '<option value="">-- Sélectionnez une classe --</option>';
+    classes.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nom;
+        classSelect.appendChild(opt);
+    });
+}
+
+// =====================================
+// CHARGEMENT ÉLÈVES
+// =====================================
+async function loadEleves(classeId) {
+    resetGroups();
+    unassigned.innerHTML = '';
+    const eleves = await api(`/api/eleves?classe_id=${classeId}&groupe_id=0`);
+    currentEleves = eleves;
+    eleves.forEach(e => {
+        const card = createStudentCard(e);
+        unassigned.appendChild(card);
+    });
+    enableDragStudents();
+    updateCounters();
+}
+
+// =====================================
+// CRÉER CARTE ÉLÈVE
+// =====================================
+function createStudentCard(eleve) {
+    const div = document.createElement('div');
+    div.className = 'student-card';
+    div.draggable = true;
+    div.dataset.id = eleve.id;
+    div.textContent = `${eleve.prenom} ${eleve.nom}`;
+    return div;
+}
+
+// =====================================
+// RESET GROUPES
+// =====================================
+function resetGroups() {
+    container.innerHTML = '';
+    groupCount = 0;
+    addGroup();
+    addGroup();
+}
+
+// =====================================
+// AJOUT GROUPE
+// =====================================
+function addGroup() {
+    if (groupCount >= 26) return;
+    const letter = String.fromCharCode(65 + groupCount);
+    const div = document.createElement('div');
+    div.className = 'bg-white rounded-lg shadow group-box w-[260px] overflow-hidden';
+    div.innerHTML = `
+        <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center">
+            <h3 class="group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200">Groupe ${letter}</h3>
+            <span class="badge">0 élève</span>
+        </div>
+        <div class="p-3">
+            <div class="students-zone"></div>
+        </div>
+    `;
+    container.appendChild(div);
+    enableDropZones();
+    enableRenameGroups();
+    updateCounters();
+    groupCount++;
+}
+
+// =====================================
+// SUPPRESSION GROUPE
+// =====================================
+function removeGroup() {
+    if (groupCount <= 0) return;
+    const last = container.lastElementChild;
+    if (!last) return;
+    const cards = last.querySelectorAll('.student-card');
+    cards.forEach(card => unassigned.appendChild(card));
+    last.remove();
+    groupCount--;
+    updateCounters();
+}
+
+// =====================================
+// DRAG & DROP
+// =====================================
+function enableDragStudents() {
+    document.querySelectorAll('.student-card').forEach(card => {
+        if (card.dataset.dragEnabled) return;
+        card.dataset.dragEnabled = '1';
+        card.addEventListener('dragstart', () => {
+            draggedStudent = card;
+            setTimeout(() => { card.style.display = 'none'; }, 0);
+        });
+        card.addEventListener('dragend', () => {
+            setTimeout(() => {
+                card.style.display = 'block';
+                draggedStudent = null;
+                updateCounters();
+                saveAssignments();
+            }, 0);
+        });
+    });
+}
+
+function enableDropZones() {
+    document.querySelectorAll('.students-zone').forEach(zone => {
+        if (zone.dataset.dropEnabled) return;
+        zone.dataset.dropEnabled = '1';
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => {
+            zone.classList.remove('drag-over');
+        });
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            if (draggedStudent) {
+                zone.appendChild(draggedStudent);
+                updateCounters();
+                saveAssignments();
+            }
+        });
+    });
+}
+
+// =====================================
+// RENOMMAGE
+// =====================================
+function enableRenameGroups() {
+    document.querySelectorAll('.group-title').forEach(title => {
+        if (title.dataset.renameEnabled) return;
+        title.dataset.renameEnabled = '1';
+        title.addEventListener('dblclick', () => {
+            const current = title.textContent.trim();
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = current;
+            input.className = 'rename-input';
+            title.replaceWith(input);
+            input.focus();
+            input.select();
+            function save() {
+                const val = input.value.trim() || current;
+                const h3 = document.createElement('h3');
+                h3.className = 'group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200';
+                h3.textContent = val;
+                input.replaceWith(h3);
+                enableRenameGroups();
+                saveAssignments();
+            }
+            input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+            input.addEventListener('blur', save);
+        });
+    });
+}
+
+// =====================================
+// COMPTEURS
+// =====================================
+function updateCounters() {
+    document.querySelectorAll('.group-box').forEach(group => {
+        const count = group.querySelectorAll('.student-card').length;
+        const badge = group.querySelector('.badge');
+        if (badge) badge.textContent = count + (count > 1 ? ' élèves' : ' élève');
+    });
+}
+
+// =====================================
+// SAUVEGARDE
+// =====================================
+async function saveAssignments() {
+    const updates = [];
+    document.querySelectorAll('.group-box').forEach(group => {
+        const groupName = group.querySelector('.group-title')?.textContent || '';
+        const cards = group.querySelectorAll('.student-card');
+        cards.forEach(card => {
+            updates.push({
+                eleve_id: parseInt(card.dataset.id),
+                groupe: groupName
+            });
+        });
+    });
+    // Non affectés
+    unassigned.querySelectorAll('.student-card').forEach(card => {
+        updates.push({
+            eleve_id: parseInt(card.dataset.id),
+            groupe: null
+        });
+    });
+
+    for (const u of updates) {
+        try {
+            if (u.groupe) {
+                await api('/place/api/assign', {
+                    method: 'POST',
+                    body: JSON.stringify({ eleve_id: u.eleve_id, groupe: u.groupe })
+                });
+            } else {
+                await api('/place/api/unassign', {
+                    method: 'POST',
+                    body: JSON.stringify({ eleve_id: u.eleve_id })
+                });
+            }
+        } catch (e) { /* ignore */ }
+    }
+}
+
+// =====================================
+// EVENTS
+// =====================================
+document.getElementById('addGroup').addEventListener('click', addGroup);
+document.getElementById('removeGroup').addEventListener('click', removeGroup);
+classSelect.addEventListener('change', e => {
+    if (e.target.value) loadEleves(e.target.value);
+    else { resetGroups(); unassigned.innerHTML = ''; }
+});
+
+// =====================================
+// INIT
+// =====================================
+loadClasses();
+resetGroups();
+enableDropZones();
+enableRenameGroups();
+</script>
+{% endblock %}

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Équipes - Place{% endblock %}
+{% block title %}Classes - Place{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-6">Équipes</h1>
+<h1 class="text-2xl font-bold text-gray-900 mb-6">Classes</h1>
 
-<div id="team-form" class="bg-white rounded-lg shadow p-6 mb-8">
-    <h2 class="text-lg font-semibold mb-4">Nouvelle équipe</h2>
-    <form id="create-team" class="flex flex-col gap-4 max-w-md">
-        <input type="text" name="name" placeholder="Nom de l'équipe" required
+<div class="bg-white rounded-lg shadow p-6 mb-8">
+    <h2 class="text-lg font-semibold mb-4">Nouvelle classe</h2>
+    <form id="create-classe" class="flex flex-col gap-4 max-w-md">
+        <input type="text" name="nom" placeholder="Nom de la classe" required
                class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
         <input type="text" name="description" placeholder="Description"
                class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
@@ -16,5 +16,5 @@
     </form>
 </div>
 
-<div id="teams-list" class="grid gap-4"></div>
+<div id="classes-list" class="grid gap-4"></div>
 {% endblock %}

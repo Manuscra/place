@@ -1,4 +1,6 @@
-from .member import Member
-from .team import Team
+from .classe import Classe
+from .eleve import Eleve
+from .groupe import Groupe
+from .projet import Projet
 
-__all__ = ["Member", "Team"]
+__all__ = ["Classe", "Eleve", "Groupe", "Projet"]

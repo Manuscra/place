@@ -5,14 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Place - Gestion d'équipe{% endblock %}</title>
     <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
+    {% block head_extra %}{% endblock %}
 </head>
 <body class="h-full bg-gray-50">
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="/" class="text-lg font-bold text-indigo-600">Place</a>
             <div class="flex gap-4 text-sm text-gray-600">
-                <a href="/teams" class="hover:text-indigo-600">Équipes</a>
-                <a href="/members" class="hover:text-indigo-600">Membres</a>
+                <a href="/place" class="hover:text-indigo-600">Placement</a>
+                <a href="/classes" class="hover:text-indigo-600">Classes</a>
+                <a href="/projets" class="hover:text-indigo-600">Projets</a>
+                <a href="/groupes" class="hover:text-indigo-600">Groupes</a>
+                <a href="/eleves" class="hover:text-indigo-600">Élèves</a>
             </div>
         </div>
     </nav>
@@ -20,5 +24,6 @@
         {% block content %}{% endblock %}
     </main>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    {% block scripts %}{% endblock %}
 </body>
 </html>

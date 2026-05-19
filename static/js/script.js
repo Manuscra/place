@@ -22,113 +22,220 @@ function toast(message, type = "success") {
   setTimeout(() => { el.remove(); }, 3000);
 }
 
-// --- Teams page ---
-if (document.getElementById("create-team")) {
-  document.getElementById("create-team").addEventListener("submit", async (e) => {
+// --- Classes page ---
+if (document.getElementById("create-classe")) {
+  document.getElementById("create-classe").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
     try {
-      await api("/api/teams", {
-        method: "POST",
-        body: JSON.stringify(Object.fromEntries(form)),
-      });
+      await api("/api/classes", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
       e.target.reset();
-      toast("Équipe créée !");
-      loadTeams();
-    } catch (err) {
-      toast(err.message, "error");
-    }
+      toast("Classe créée !");
+      loadClasses();
+    } catch (err) { toast(err.message, "error"); }
   });
 }
 
-async function loadTeams() {
-  const teams = await api("/api/teams");
-  const list = document.getElementById("teams-list");
-  list.innerHTML = teams
-    .map(
-      (t) => `
+async function loadClasses() {
+  const classes = await api("/api/classes");
+  const list = document.getElementById("classes-list");
+  list.innerHTML = classes.map((c) => `
     <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
       <div>
-        <h3 class="font-semibold text-gray-900">${t.name}</h3>
-        <p class="text-sm text-gray-500">${t.description || ""} — ${t.members.length} membre(s)</p>
+        <h3 class="font-semibold text-gray-900">${c.nom}</h3>
+        <p class="text-sm text-gray-500">${c.description || ""}</p>
       </div>
-      <button onclick="deleteTeam(${t.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
-    </div>`
-    )
-    .join("");
+      <button onclick="deleteClasse(${c.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+    </div>`).join("");
 }
 
-async function deleteTeam(id) {
-  if (!confirm("Supprimer cette équipe ?")) return;
+async function deleteClasse(id) {
+  if (!confirm("Supprimer cette classe ?")) return;
   try {
-    await api(`/api/teams/${id}`, { method: "DELETE" });
-    toast("Équipe supprimée.");
-    loadTeams();
-  } catch (err) {
-    toast(err.message, "error");
-  }
+    await api(`/api/classes/${id}`, { method: "DELETE" });
+    toast("Classe supprimée.");
+    loadClasses();
+  } catch (err) { toast(err.message, "error"); }
 }
 
-if (document.getElementById("teams-list")) loadTeams();
+if (document.getElementById("classes-list")) loadClasses();
 
-// --- Members page ---
-async function loadTeamsIntoSelect() {
-  const teams = await api("/api/teams");
-  const select = document.querySelector("#create-member select[name=team_id]");
-  teams.forEach((t) => {
+// --- Projets page ---
+async function loadClassesIntoProjetSelect() {
+  const classes = await api("/api/classes");
+  const select = document.querySelector("#create-projet select[name=classe_id]");
+  if (!select) return;
+  classes.forEach((c) => {
     const opt = document.createElement("option");
-    opt.value = t.id;
-    opt.textContent = t.name;
+    opt.value = c.id;
+    opt.textContent = c.nom;
     select.appendChild(opt);
   });
 }
 
-if (document.getElementById("create-member")) {
-  loadTeamsIntoSelect();
-
-  document.getElementById("create-member").addEventListener("submit", async (e) => {
+if (document.getElementById("create-projet")) {
+  loadClassesIntoProjetSelect();
+  document.getElementById("create-projet").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
     const data = Object.fromEntries(form);
-    if (!data.team_id) delete data.team_id;
-    else data.team_id = parseInt(data.team_id);
+    if (!data.classe_id) return toast("Veuillez choisir une classe", "error");
+    data.classe_id = parseInt(data.classe_id);
     try {
-      await api("/api/members", { method: "POST", body: JSON.stringify(data) });
+      await api("/api/projets", { method: "POST", body: JSON.stringify(data) });
       e.target.reset();
-      toast("Membre créé !");
-      loadMembers();
-    } catch (err) {
-      toast(err.message, "error");
-    }
+      toast("Projet créé !");
+      loadProjets();
+    } catch (err) { toast(err.message, "error"); }
   });
 }
 
-async function loadMembers() {
-  const members = await api("/api/members");
-  const list = document.getElementById("members-list");
-  list.innerHTML = members
-    .map(
-      (m) => `
+async function loadProjets() {
+  const projets = await api("/api/projets");
+  const list = document.getElementById("projets-list");
+  list.innerHTML = projets.map((p) => `
     <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
       <div>
-        <h3 class="font-semibold text-gray-900">${m.name} <span class="text-sm text-gray-400 font-normal">${m.email}</span></h3>
-        <p class="text-sm text-gray-500">${m.role}${m.team_id ? " — Équipe #" + m.team_id : ""}</p>
+        <h3 class="font-semibold text-gray-900">${p.nom}</h3>
+        <p class="text-sm text-gray-500">Classe #${p.classe_id}</p>
       </div>
-      <button onclick="deleteMember(${m.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
-    </div>`
-    )
-    .join("");
+      <button onclick="deleteProjet(${p.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+    </div>`).join("");
 }
 
-async function deleteMember(id) {
-  if (!confirm("Supprimer ce membre ?")) return;
+async function deleteProjet(id) {
+  if (!confirm("Supprimer ce projet ?")) return;
   try {
-    await api(`/api/members/${id}`, { method: "DELETE" });
-    toast("Membre supprimé.");
-    loadMembers();
-  } catch (err) {
-    toast(err.message, "error");
-  }
+    await api(`/api/projets/${id}`, { method: "DELETE" });
+    toast("Projet supprimé.");
+    loadProjets();
+  } catch (err) { toast(err.message, "error"); }
 }
 
-if (document.getElementById("members-list")) loadMembers();
+if (document.getElementById("projets-list")) loadProjets();
+
+// --- Groupes page ---
+async function loadProjetsIntoGroupeSelect() {
+  const projets = await api("/api/projets");
+  const select = document.querySelector("#create-groupe select[name=projet_id]");
+  if (!select) return;
+  projets.forEach((p) => {
+    const opt = document.createElement("option");
+    opt.value = p.id;
+    opt.textContent = p.nom;
+    select.appendChild(opt);
+  });
+}
+
+if (document.getElementById("create-groupe")) {
+  loadProjetsIntoGroupeSelect();
+  document.getElementById("create-groupe").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const data = Object.fromEntries(form);
+    if (!data.projet_id) return toast("Veuillez choisir un projet", "error");
+    data.projet_id = parseInt(data.projet_id);
+    try {
+      await api("/api/groupes", { method: "POST", body: JSON.stringify(data) });
+      e.target.reset();
+      toast("Groupe créé !");
+      loadGroupes();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadGroupes() {
+  const groupes = await api("/api/groupes");
+  const list = document.getElementById("groupes-list");
+  list.innerHTML = groupes.map((g) => `
+    <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+      <div>
+        <h3 class="font-semibold text-gray-900">${g.nom}</h3>
+        <p class="text-sm text-gray-500">Projet #${g.projet_id}</p>
+      </div>
+      <button onclick="deleteGroupe(${g.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+    </div>`).join("");
+}
+
+async function deleteGroupe(id) {
+  if (!confirm("Supprimer ce groupe ?")) return;
+  try {
+    await api(`/api/groupes/${id}`, { method: "DELETE" });
+    toast("Groupe supprimé.");
+    loadGroupes();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("groupes-list")) loadGroupes();
+
+// --- Eleves page ---
+async function loadClassesIntoEleveSelect() {
+  const classes = await api("/api/classes");
+  const select = document.querySelector("#create-eleve select[name=classe_id]");
+  if (!select) return;
+  classes.forEach((c) => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.nom;
+    select.appendChild(opt);
+  });
+}
+
+async function loadGroupesIntoEleveSelect() {
+  const groupes = await api("/api/groupes");
+  const select = document.querySelector("#create-eleve select[name=groupe_id]");
+  if (!select) return;
+  groupes.forEach((g) => {
+    const opt = document.createElement("option");
+    opt.value = g.id;
+    opt.textContent = g.nom;
+    select.appendChild(opt);
+  });
+}
+
+if (document.getElementById("create-eleve")) {
+  loadClassesIntoEleveSelect();
+  loadGroupesIntoEleveSelect();
+  document.getElementById("create-eleve").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = new FormData(e.target);
+    const data = Object.fromEntries(form);
+    if (!data.classe_id) return toast("Veuillez choisir une classe", "error");
+    data.classe_id = parseInt(data.classe_id);
+    if (data.groupe_id) data.groupe_id = parseInt(data.groupe_id);
+    else delete data.groupe_id;
+    try {
+      await api("/api/eleves", { method: "POST", body: JSON.stringify(data) });
+      e.target.reset();
+      toast("Élève créé !");
+      loadEleves();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadEleves() {
+  const eleves = await api("/api/eleves");
+  const list = document.getElementById("eleves-list");
+  list.innerHTML = eleves.map((e) => `
+    <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
+      <div>
+        <h3 class="font-semibold text-gray-900">${e.prenom} ${e.nom}</h3>
+        <p class="text-sm text-gray-500">
+          Classe #${e.classe_id}
+          ${e.groupe_id ? " — Groupe #" + e.groupe_id : " — Non affecté"}
+        </p>
+      </div>
+      <button onclick="deleteEleve(${e.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+    </div>`).join("");
+}
+
+async function deleteEleve(id) {
+  if (!confirm("Supprimer cet élève ?")) return;
+  try {
+    await api(`/api/eleves/${id}`, { method: "DELETE" });
+    toast("Élève supprimé.");
+    loadEleves();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("eleves-list")) loadEleves();
