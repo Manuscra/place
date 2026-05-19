@@ -70,6 +70,10 @@ jobs:
       - name: Install sshpass
         run: sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
 
+      - name: Create remote directory
+        run: |
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "mkdir -p ${{ secrets.ALWAYSDATA_PATH }}"
+
       - name: Deploy to AlwaysData
         run: |
           sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" rsync -avz -e "ssh -o StrictHostKeyChecking=no" --delete \
