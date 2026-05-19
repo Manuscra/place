@@ -72,7 +72,7 @@ jobs:
 
       - name: Deploy to AlwaysData
         run: |
-          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" rsync -avz --delete \
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" rsync -avz -e "ssh -o StrictHostKeyChecking=no" --delete \
             --exclude '.git' \
             --exclude '.github' \
             --exclude '.venv' \
