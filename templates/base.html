@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Place - Gestion d'équipe{% endblock %}</title>
+    <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
+</head>
+<body class="h-full bg-gray-50">
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+            <a href="/" class="text-lg font-bold text-indigo-600">Place</a>
+            <div class="flex gap-4 text-sm text-gray-600">
+                <a href="/teams" class="hover:text-indigo-600">Équipes</a>
+                <a href="/members" class="hover:text-indigo-600">Membres</a>
+            </div>
+        </div>
+    </nav>
+    <main class="max-w-5xl mx-auto px-4 py-8">
+        {% block content %}{% endblock %}
+    </main>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

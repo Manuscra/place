@@ -1,0 +1,7 @@
+{
+  "comment": "Tailwind CLI standalone — no Node.js required beyond the binary.",
+  "private": true,
+  "devDependencies": {
+    "tailwindcss": "^3.4.0"
+  }
+}
