@@ -17,21 +17,24 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Create virtualenv
+        run: python -m venv env
+
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+          env/bin/pip install -r requirements.txt
+          env/bin/pip install -r requirements-dev.txt
 
       - name: Lint with ruff
-        run: ruff check .
+        run: env/bin/ruff check .
 
       - name: Verify migrations are valid
         run: |
           rm -f /tmp/test_migration.db
-          DATABASE_URL=sqlite:////tmp/test_migration.db PYTHONPATH=. alembic upgrade head
+          DATABASE_URL=sqlite:////tmp/test_migration.db PYTHONPATH=. env/bin/alembic upgrade head
 
       - name: Run tests
-        run: PYTHONPATH=. pytest -v
+        run: PYTHONPATH=. env/bin/pytest -v
 
   build-css:
     runs-on: ubuntu-latest
@@ -77,14 +80,14 @@ jobs:
 
       - name: Prepare remote directory
         run: |
-          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "mkdir -p ${{ secrets.ALWAYSDATA_PATH }}; find ${{ secrets.ALWAYSDATA_PATH }} -mindepth 1 -not -name 'place.db' -exec rm -rf {} \; 2>/dev/null; echo ok"
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "mkdir -p ${{ secrets.ALWAYSDATA_PATH }}; find ${{ secrets.ALWAYSDATA_PATH }} -mindepth 1 -not -name 'place.db' -not -name 'env' -exec rm -rf {} \; 2>/dev/null; echo ok"
 
       - name: Deploy to AlwaysData
         run: |
           sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" rsync -avz -e "ssh -o StrictHostKeyChecking=no" --delete \
             --exclude '.git' \
             --exclude '.github' \
-            --exclude '.venv' \
+            --exclude 'env' \
             --exclude 'node_modules' \
             --exclude '.pytest_cache' \
             --exclude '.ruff_cache' \
@@ -95,3 +98,18 @@ jobs:
             --exclude 'passenger_wsgi.py' \
             ./ \
             "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}:${{ secrets.ALWAYSDATA_PATH }}"
+
+      - name: Setup server virtualenv and install dependencies
+        run: |
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "
+          cd ${{ secrets.ALWAYSDATA_PATH }}
+          test -d env || python3 -m venv env
+          env/bin/pip install -r requirements.txt
+          "
+
+      - name: Apply database migrations on server
+        run: |
+          sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "
+          cd ${{ secrets.ALWAYSDATA_PATH }}
+          PYTHONPATH=. env/bin/alembic upgrade head
+          "
