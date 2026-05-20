@@ -94,7 +94,6 @@ jobs:
             --exclude '__pycache__' \
             --exclude 'place.db' \
             --exclude '.gitignore' \
-            --exclude 'env/' \
             --exclude 'passenger_wsgi.py' \
             ./ \
             "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}:${{ secrets.ALWAYSDATA_PATH }}"
@@ -103,7 +102,9 @@ jobs:
         run: |
           sshpass -p "${{ secrets.ALWAYSDATA_SSH_PASS }}" ssh -o StrictHostKeyChecking=no "${{ secrets.ALWAYSDATA_USER }}@${{ secrets.ALWAYSDATA_HOST }}" "
           cd ${{ secrets.ALWAYSDATA_PATH }}
-          test -d env || python3 -m venv env
+          rm -rf env
+          python3.12 -m venv env
+          env/bin/pip install --upgrade pip
           env/bin/pip install -r requirements.txt
           "
 

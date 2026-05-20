@@ -1,14 +1,13 @@
 from datetime import datetime
-from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class EleveBase(BaseModel):
     nom: str = Field(..., min_length=1, max_length=100)
     prenom: str = Field(..., min_length=1, max_length=100)
     classe_id: int
-    groupe_id: Optional[int] = None
+    groupe_id: int | None = None
 
 
 class EleveCreate(EleveBase):
@@ -16,15 +15,14 @@ class EleveCreate(EleveBase):
 
 
 class EleveUpdate(BaseModel):
-    nom: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    prenom: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    classe_id: Optional[int] = None
-    groupe_id: Optional[int] = None
+    nom: str | None = Field(default=None, min_length=1, max_length=100)
+    prenom: str | None = Field(default=None, min_length=1, max_length=100)
+    classe_id: int | None = None
+    groupe_id: int | None = None
 
 
 class EleveOut(EleveBase):
-    id: int
-    created_at: Optional[datetime] = None
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        orm_mode = True
+    id: int
+    created_at: datetime | None = None

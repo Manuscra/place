@@ -3,7 +3,6 @@ from flask import Blueprint, jsonify, request
 from ..database import db
 from ..models import Projet
 from ..schemas import ProjetCreate, ProjetOut, ProjetUpdate
-from ..schemas import _serialize
 
 projets_bp = Blueprint("projets", __name__, url_prefix="/api/projets")
 
@@ -15,7 +14,7 @@ def list_projets():
     if classe_id is not None:
         query = query.filter_by(classe_id=classe_id)
     projets = query.all()
-    return jsonify([_serialize(ProjetOut.from_orm(p)) for p in projets])
+    return jsonify([ProjetOut.model_validate(p).model_dump(mode="json") for p in projets])
 
 
 @projets_bp.route("/<int:projet_id>", methods=["GET"])
@@ -23,16 +22,16 @@ def get_projet(projet_id):
     projet = db.session.get(Projet, projet_id)
     if not projet:
         return jsonify({"error": "Projet not found"}), 404
-    return jsonify(_serialize(ProjetOut.from_orm(projet)))
+    return jsonify(ProjetOut.model_validate(projet).model_dump(mode="json"))
 
 
 @projets_bp.route("", methods=["POST"])
 def create_projet():
-    data = ProjetCreate.parse_obj(request.get_json(silent=True) or {})
-    projet = Projet(**data.dict())
+    data = ProjetCreate.model_validate(request.get_json(silent=True) or {})
+    projet = Projet(**data.model_dump())
     db.session.add(projet)
     db.session.commit()
-    return jsonify(_serialize(ProjetOut.from_orm(projet))), 201
+    return jsonify(ProjetOut.model_validate(projet).model_dump(mode="json")), 201
 
 
 @projets_bp.route("/<int:projet_id>", methods=["PUT"])
@@ -40,11 +39,11 @@ def update_projet(projet_id):
     projet = db.session.get(Projet, projet_id)
     if not projet:
         return jsonify({"error": "Projet not found"}), 404
-    data = ProjetUpdate.parse_obj(request.get_json(silent=True) or {})
-    for key, val in data.dict(exclude_unset=True).items():
+    data = ProjetUpdate.model_validate(request.get_json(silent=True) or {})
+    for key, val in data.model_dump(exclude_unset=True).items():
         setattr(projet, key, val)
     db.session.commit()
-    return jsonify(_serialize(ProjetOut.from_orm(projet)))
+    return jsonify(ProjetOut.model_validate(projet).model_dump(mode="json"))
 
 
 @projets_bp.route("/<int:projet_id>", methods=["DELETE"])
