@@ -65,6 +65,20 @@ def _run_migrations(app, _here):
     alembic.command.upgrade(_alembic_cfg, "head")
 
 
+class _PrefixMiddleware:
+
+    def __init__(self, wsgi_app, prefix):
+        self.app = wsgi_app
+        self.prefix = prefix.rstrip("/")
+
+    def __call__(self, environ, start_response):
+        environ.setdefault("SCRIPT_NAME", self.prefix)
+        path = environ.get("PATH_INFO", "")
+        if path.startswith(self.prefix):
+            environ["PATH_INFO"] = path[len(self.prefix):] or "/"
+        return self.app(environ, start_response)
+
+
 def create_app(testing=False, run_migrations=True):
     _here = os.path.dirname(os.path.abspath(__file__))
     _root = os.path.dirname(_here)
@@ -129,5 +143,9 @@ def create_app(testing=False, run_migrations=True):
     @app.route("/eleves")
     def eleves_page():
         return render_template("eleves.html")
+
+    prefix = app.config.get("APPLICATION_ROOT")
+    if prefix and not testing and env != "production":
+        app.wsgi_app = _PrefixMiddleware(app.wsgi_app, prefix)
 
     return app

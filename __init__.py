@@ -9,6 +9,7 @@ if _base not in sys.path:
 
 # Config production
 os.environ.setdefault("FLASK_ENV", "production")
+os.environ.setdefault("APPLICATION_ROOT", "/place")
 os.environ.setdefault("SECRET_KEY", "changez-moi-en-production-12345")
 os.environ.setdefault("DATABASE_URL", f"sqlite:///{_base}/place.db")
 
