@@ -1,11 +1,12 @@
 from datetime import datetime
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ClasseBase(BaseModel):
     nom: str = Field(..., min_length=1, max_length=100)
-    description: str | None = Field(default=None, max_length=500)
+    description: Optional[str] = Field(default=None, max_length=500)
 
 
 class ClasseCreate(ClasseBase):
@@ -13,12 +14,13 @@ class ClasseCreate(ClasseBase):
 
 
 class ClasseUpdate(BaseModel):
-    nom: str | None = Field(default=None, min_length=1, max_length=100)
-    description: str | None = Field(default=None, max_length=500)
+    nom: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    description: Optional[str] = Field(default=None, max_length=500)
 
 
 class ClasseOut(ClasseBase):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
-    created_at: datetime | None = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True

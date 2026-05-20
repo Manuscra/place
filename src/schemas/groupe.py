@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class GroupeBase(BaseModel):
@@ -13,12 +14,13 @@ class GroupeCreate(GroupeBase):
 
 
 class GroupeUpdate(BaseModel):
-    nom: str | None = Field(default=None, min_length=1, max_length=100)
-    projet_id: int | None = None
+    nom: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    projet_id: Optional[int] = None
 
 
 class GroupeOut(GroupeBase):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
-    created_at: datetime | None = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True

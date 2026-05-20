@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, request
 from ..database import db
 from ..models import Eleve
 from ..schemas import EleveCreate, EleveOut, EleveUpdate
+from ..schemas import _serialize
 
 eleves_bp = Blueprint("eleves", __name__, url_prefix="/api/eleves")
 
@@ -20,7 +21,7 @@ def list_eleves():
         else:
             query = query.filter_by(groupe_id=groupe_id)
     eleves = query.all()
-    return jsonify([EleveOut.model_validate(e).model_dump(mode="json") for e in eleves])
+    return jsonify([_serialize(EleveOut.from_orm(e)) for e in eleves])
 
 
 @eleves_bp.route("/<int:eleve_id>", methods=["GET"])
@@ -28,16 +29,16 @@ def get_eleve(eleve_id):
     eleve = db.session.get(Eleve, eleve_id)
     if not eleve:
         return jsonify({"error": "Eleve not found"}), 404
-    return jsonify(EleveOut.model_validate(eleve).model_dump(mode="json"))
+    return jsonify(_serialize(EleveOut.from_orm(eleve)))
 
 
 @eleves_bp.route("", methods=["POST"])
 def create_eleve():
-    data = EleveCreate.model_validate(request.get_json(silent=True) or {})
-    eleve = Eleve(**data.model_dump())
+    data = EleveCreate.parse_obj(request.get_json(silent=True) or {})
+    eleve = Eleve(**data.dict())
     db.session.add(eleve)
     db.session.commit()
-    return jsonify(EleveOut.model_validate(eleve).model_dump(mode="json")), 201
+    return jsonify(_serialize(EleveOut.from_orm(eleve))), 201
 
 
 @eleves_bp.route("/<int:eleve_id>", methods=["PUT"])
@@ -45,11 +46,11 @@ def update_eleve(eleve_id):
     eleve = db.session.get(Eleve, eleve_id)
     if not eleve:
         return jsonify({"error": "Eleve not found"}), 404
-    data = EleveUpdate.model_validate(request.get_json(silent=True) or {})
-    for key, val in data.model_dump(exclude_unset=True).items():
+    data = EleveUpdate.parse_obj(request.get_json(silent=True) or {})
+    for key, val in data.dict(exclude_unset=True).items():
         setattr(eleve, key, val)
     db.session.commit()
-    return jsonify(EleveOut.model_validate(eleve).model_dump(mode="json"))
+    return jsonify(_serialize(EleveOut.from_orm(eleve)))
 
 
 @eleves_bp.route("/<int:eleve_id>", methods=["DELETE"])

@@ -1,6 +1,7 @@
 from datetime import datetime
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 
 class ProjetBase(BaseModel):
@@ -13,12 +14,13 @@ class ProjetCreate(ProjetBase):
 
 
 class ProjetUpdate(BaseModel):
-    nom: str | None = Field(default=None, min_length=1, max_length=100)
-    classe_id: int | None = None
+    nom: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    classe_id: Optional[int] = None
 
 
 class ProjetOut(ProjetBase):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
-    created_at: datetime | None = None
+    created_at: Optional[datetime] = None
+
+    class Config:
+        orm_mode = True

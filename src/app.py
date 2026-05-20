@@ -1,7 +1,9 @@
 """Flask application factory."""
 
+import logging
 import os
 import sqlite3
+import sys
 
 from flask import Flask, jsonify, render_template
 from pydantic import ValidationError
@@ -11,6 +13,8 @@ from .database import db
 from .models import Classe
 from .place import place_bp
 from .routes import register_all
+
+logger = logging.getLogger(__name__)
 
 
 def _seed_default_classes():
@@ -55,6 +59,7 @@ def _run_migrations(app, _here):
     )
 
     if _needs_stamp(app.config["SQLALCHEMY_DATABASE_URI"]):
+        logger.info("Legacy database detected — stamping at head")
         alembic.command.stamp(_alembic_cfg, "head")
 
     alembic.command.upgrade(_alembic_cfg, "head")
@@ -63,6 +68,10 @@ def _run_migrations(app, _here):
 def create_app(testing=False, run_migrations=True):
     _here = os.path.dirname(os.path.abspath(__file__))
     _root = os.path.dirname(_here)
+
+    if _root not in sys.path:
+        sys.path.insert(0, _root)
+
     app = Flask(
         __name__,
         template_folder=os.path.join(_root, "templates"),
@@ -83,8 +92,14 @@ def create_app(testing=False, run_migrations=True):
 
     with app.app_context():
         if run_migrations and not testing:
-            _run_migrations(app, _here)
-            _seed_default_classes()
+            try:
+                _run_migrations(app, _here)
+            except Exception:
+                logger.exception("Failed to run migrations — continuing anyway")
+            try:
+                _seed_default_classes()
+            except Exception:
+                logger.exception("Failed to seed default classes")
         elif testing:
             db.create_all()
 
