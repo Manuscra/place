@@ -127,6 +127,10 @@ def create_app(testing=False, run_migrations=True):
 
     @app.route("/")
     def index():
+        return render_template("place.html")
+
+    @app.route("/dashboard")
+    def dashboard():
         return render_template("index.html")
 
     @app.route("/classes")
@@ -144,10 +148,6 @@ def create_app(testing=False, run_migrations=True):
     @app.route("/eleves")
     def eleves_page():
         return render_template("eleves.html")
-
-    @app.route("/placement")
-    def place_page():
-        return render_template("place.html")
 
     prefix = app.config.get("APPLICATION_ROOT")
     if prefix and not testing:
