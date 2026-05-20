@@ -19,3 +19,4 @@ class TestConfig(Config):
 
 class ProdConfig(Config):
     DEBUG = False
+    APPLICATION_ROOT = os.environ.get("APPLICATION_ROOT", "/place")
