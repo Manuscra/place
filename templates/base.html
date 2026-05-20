@@ -10,13 +10,13 @@
 <body class="h-full bg-gray-50">
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <a href="/" class="text-lg font-bold text-indigo-600">Place</a>
+            <a href="{{ url_for('index') }}" class="text-lg font-bold text-indigo-600">Place</a>
             <div class="flex gap-4 text-sm text-gray-600">
-                <a href="/place" class="hover:text-indigo-600">Placement</a>
-                <a href="/classes" class="hover:text-indigo-600">Classes</a>
-                <a href="/projets" class="hover:text-indigo-600">Projets</a>
-                <a href="/groupes" class="hover:text-indigo-600">Groupes</a>
-                <a href="/eleves" class="hover:text-indigo-600">Élèves</a>
+                <a href="{{ url_for('place.index') }}" class="hover:text-indigo-600">Placement</a>
+                <a href="{{ url_for('classes_page') }}" class="hover:text-indigo-600">Classes</a>
+                <a href="{{ url_for('projets_page') }}" class="hover:text-indigo-600">Projets</a>
+                <a href="{{ url_for('groupes_page') }}" class="hover:text-indigo-600">Groupes</a>
+                <a href="{{ url_for('eleves_page') }}" class="hover:text-indigo-600">Élèves</a>
             </div>
         </div>
     </nav>

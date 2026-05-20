@@ -294,13 +294,15 @@ async function saveAssignments() {
     for (const u of updates) {
         try {
             if (u.groupe) {
-                await api('/place/api/assign', {
+                await fetch('/place/api/assign', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ eleve_id: u.eleve_id, groupe: u.groupe })
                 });
             } else {
-                await api('/place/api/unassign', {
+                await fetch('/place/api/unassign', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ eleve_id: u.eleve_id })
                 });
             }

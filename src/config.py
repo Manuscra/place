@@ -5,7 +5,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Config:
-    APPLICATION_ROOT = os.environ.get("APPLICATION_ROOT", "/place")
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-in-production")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = os.environ.get(
@@ -20,3 +19,4 @@ class TestConfig(Config):
 
 class ProdConfig(Config):
     DEBUG = False
+    APPLICATION_ROOT = os.environ.get("APPLICATION_ROOT", "/place")
