@@ -25,6 +25,11 @@ jobs:
       - name: Lint with ruff
         run: ruff check .
 
+      - name: Verify migrations are valid
+        run: |
+          rm -f /tmp/test_migration.db
+          DATABASE_URL=sqlite:////tmp/test_migration.db PYTHONPATH=. alembic upgrade head
+
       - name: Run tests
         run: PYTHONPATH=. pytest -v
 

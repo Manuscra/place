@@ -1,4 +1,7 @@
+"""Flask application factory."""
+
 import os
+import sqlite3
 
 from flask import Flask, jsonify, render_template
 from pydantic import ValidationError
@@ -23,13 +26,47 @@ def _seed_default_classes():
         db.session.commit()
 
 
-def create_app(testing=False):
+def _needs_stamp(db_uri: str) -> bool:
+    """Return True if the database exists but was never tracked by Alembic."""
+    db_file = db_uri.replace("sqlite:///", "", 1)
+    if not os.path.exists(db_file):
+        return False
+    conn = sqlite3.connect(db_file)
+    try:
+        tables = [
+            r[0]
+            for r in conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        ]
+        return bool(tables) and "alembic_version" not in tables
+    finally:
+        conn.close()
+
+
+def _run_migrations(app, _here):
+    import alembic.command
+    from alembic.config import Config as AlembicConfig
+
+    _alembic_ini = os.path.join(_here, "..", "alembic.ini")
+    _alembic_cfg = AlembicConfig(_alembic_ini)
+    _alembic_cfg.set_main_option(
+        "sqlalchemy.url", app.config["SQLALCHEMY_DATABASE_URI"]
+    )
+
+    if _needs_stamp(app.config["SQLALCHEMY_DATABASE_URI"]):
+        alembic.command.stamp(_alembic_cfg, "head")
+
+    alembic.command.upgrade(_alembic_cfg, "head")
+
+
+def create_app(testing=False, run_migrations=True):
     _here = os.path.dirname(os.path.abspath(__file__))
     _root = os.path.dirname(_here)
     app = Flask(
         __name__,
-        template_folder=os.path.join(_root, 'templates'),
-        static_folder=os.path.join(_root, 'static'),
+        template_folder=os.path.join(_root, "templates"),
+        static_folder=os.path.join(_root, "static"),
     )
 
     env = os.environ.get("FLASK_ENV", "development")
@@ -45,9 +82,11 @@ def create_app(testing=False):
     db.init_app(app)
 
     with app.app_context():
-        db.create_all()
-        if not testing:
+        if run_migrations and not testing:
+            _run_migrations(app, _here)
             _seed_default_classes()
+        elif testing:
+            db.create_all()
 
     @app.errorhandler(ValidationError)
     def handle_validation_error(e):
