@@ -1,6 +1,8 @@
+var API_BASE = window.API_BASE || "";
+
 // Fetch wrapper
 async function api(url, options = {}) {
-  const res = await fetch(url, {
+  const res = await fetch(API_BASE + url, {
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });

@@ -1,16 +1,11 @@
 """Placement des élèves par glisser-déposer dans des groupes."""
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, request
 
 from .database import db
-from .models import Classe, Eleve, Groupe, Projet
+from .models import Eleve, Groupe, Projet
 
-place_bp = Blueprint("place", __name__, url_prefix="/place")
-
-
-@place_bp.route("/")
-def index():
-    return render_template("place.html")
+place_bp = Blueprint("place", __name__)
 
 
 def _get_or_create_projet(classe_id):
@@ -67,9 +62,3 @@ def api_unassign():
     eleve.groupe_id = None
     db.session.commit()
     return jsonify({"success": True})
-
-
-@place_bp.route("/api/classes", methods=["GET"])
-def api_get_classes():
-    classes = Classe.query.order_by(Classe.nom).all()
-    return jsonify([{"id": c.id, "nom": c.nom} for c in classes])

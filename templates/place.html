@@ -83,7 +83,7 @@ let currentEleves = [];
 // API
 // =====================================
 async function api(url, opts = {}) {
-    const res = await fetch(url, {
+    const res = await fetch(API_BASE + url, {
         headers: { 'Content-Type': 'application/json', ...opts.headers },
         ...opts
     });
@@ -294,13 +294,13 @@ async function saveAssignments() {
     for (const u of updates) {
         try {
             if (u.groupe) {
-                await fetch('/place/api/assign', {
+                await fetch(API_BASE + '/api/assign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ eleve_id: u.eleve_id, groupe: u.groupe })
                 });
             } else {
-                await fetch('/place/api/unassign', {
+                await fetch(API_BASE + '/api/unassign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ eleve_id: u.eleve_id })
