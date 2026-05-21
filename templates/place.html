@@ -38,24 +38,33 @@
         padding: 4px;
         border: 1px solid #ccc;
         border-radius: 4px;
+        color: #000;
+    }
+    .add-group-btn {
+        width: 260px;
+        min-height: 120px;
+        border: 2px dashed #c0c0c0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        background: #fafafa;
+        transition: 0.2s;
+    }
+    .add-group-btn:hover {
+        border-color: #6366f1;
+        background: #eef2ff;
+    }
+    .add-group-btn span {
+        font-size: 32px;
+        color: #a0a0a0;
+        user-select: none;
     }
 </style>
 {% endblock %}
 {% block content %}
 <div class="space-y-6">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-900">Répartition des élèves</h2>
-        <p class="text-sm text-gray-500 mt-1">Double-cliquez sur un nom de groupe pour le renommer.</p>
-    </div>
-
-    <div class="flex gap-3">
-        <button id="addGroup" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition">
-            + Ajouter un groupe
-        </button>
-        <button id="removeGroup" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
-            - Supprimer le dernier
-        </button>
-    </div>
 
     <div id="groupsContainer" class="flex flex-wrap gap-5"></div>
 
@@ -141,6 +150,7 @@ function resetGroups() {
     groupCount = 0;
     addGroup();
     addGroup();
+    renderAddButton();
 }
 
 // =====================================
@@ -154,31 +164,66 @@ function addGroup() {
     div.innerHTML = `
         <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center">
             <h3 class="group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200">Groupe ${letter}</h3>
-            <span class="badge">0 élève</span>
+            <div class="flex items-center gap-3">
+                <span class="badge">0 élève</span>
+                <button class="delete-group-btn text-white hover:text-red-300 font-bold text-sm leading-none" title="Supprimer ce groupe">&#128465;</button>
+            </div>
         </div>
         <div class="p-3">
             <div class="students-zone"></div>
         </div>
     `;
     container.appendChild(div);
+    div.querySelector('.delete-group-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        deleteGroup(div);
+    });
     enableDropZones();
     enableRenameGroups();
     updateCounters();
     groupCount++;
+    renderAddButton();
 }
 
 // =====================================
 // SUPPRESSION GROUPE
 // =====================================
-function removeGroup() {
-    if (groupCount <= 0) return;
-    const last = container.lastElementChild;
-    if (!last) return;
-    const cards = last.querySelectorAll('.student-card');
+async function deleteGroup(groupBox) {
+    if (!confirm("Supprimer ce groupe ? Les élèves seront replacés dans la liste des non affectés.")) return;
+    const groupeId = groupBox.dataset.groupeId;
+    const cards = groupBox.querySelectorAll('.student-card');
     cards.forEach(card => unassigned.appendChild(card));
-    last.remove();
+    groupBox.remove();
     groupCount--;
+    reletterGroups();
     updateCounters();
+    renderAddButton();
+    await saveAssignments();
+    if (groupeId) {
+        try {
+            await fetch(API_BASE + `/api/groupes/${groupeId}`, { method: 'DELETE' });
+        } catch (e) { /* ignore */ }
+    }
+}
+
+function reletterGroups() {
+    container.querySelectorAll('.group-box').forEach((box, i) => {
+        const title = box.querySelector('.group-title');
+        if (title) {
+            title.textContent = `Groupe ${String.fromCharCode(65 + i)}`;
+        }
+    });
+}
+
+function renderAddButton() {
+    const existing = container.querySelector('.add-group-btn');
+    if (existing) existing.remove();
+    if (groupCount >= 26) return;
+    const div = document.createElement('div');
+    div.className = 'add-group-btn';
+    div.innerHTML = '<span>+</span>';
+    div.addEventListener('click', addGroup);
+    container.appendChild(div);
 }
 
 // =====================================
@@ -272,6 +317,12 @@ function updateCounters() {
 // SAUVEGARDE
 // =====================================
 async function saveAssignments() {
+    const groupMap = {};
+    document.querySelectorAll('.group-box').forEach(box => {
+        const name = box.querySelector('.group-title')?.textContent || '';
+        if (name) groupMap[name] = box;
+    });
+
     const updates = [];
     document.querySelectorAll('.group-box').forEach(group => {
         const groupName = group.querySelector('.group-title')?.textContent || '';
@@ -294,11 +345,15 @@ async function saveAssignments() {
     for (const u of updates) {
         try {
             if (u.groupe) {
-                await fetch(API_BASE + '/api/assign', {
+                const res = await fetch(API_BASE + '/api/assign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ eleve_id: u.eleve_id, groupe: u.groupe })
                 });
+                const data = await res.json();
+                if (data.groupe_id && groupMap[u.groupe]) {
+                    groupMap[u.groupe].dataset.groupeId = data.groupe_id;
+                }
             } else {
                 await fetch(API_BASE + '/api/unassign', {
                     method: 'POST',
@@ -313,8 +368,6 @@ async function saveAssignments() {
 // =====================================
 // EVENTS
 // =====================================
-document.getElementById('addGroup').addEventListener('click', addGroup);
-document.getElementById('removeGroup').addEventListener('click', removeGroup);
 classSelect.addEventListener('change', e => {
     if (e.target.value) loadEleves(e.target.value);
     else { resetGroups(); unassigned.innerHTML = ''; }
