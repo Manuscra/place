@@ -10,7 +10,7 @@ projets_bp = Blueprint("projets", __name__, url_prefix="/api/projets")
 @projets_bp.route("", methods=["GET"])
 def list_projets():
     classe_id = request.args.get("classe_id", type=int)
-    query = Projet.query.order_by(Projet.nom)
+    query = Projet.query.order_by(Projet.created_at)
     if classe_id is not None:
         query = query.filter_by(classe_id=classe_id)
     projets = query.all()

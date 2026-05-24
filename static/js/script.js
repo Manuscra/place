@@ -91,7 +91,7 @@ if (document.getElementById("classes-list")) {
 // --- Projets page ---
 async function loadClassesIntoProjetSelect() {
   const classes = await api("/api/classes");
-  const select = document.querySelector("#create-projet select[name=classe_id]");
+  const select = document.querySelector("#classe-filter");
   if (!select) return;
   classes.forEach((c) => {
     const opt = document.createElement("option");
@@ -103,6 +103,13 @@ async function loadClassesIntoProjetSelect() {
 
 if (document.getElementById("create-projet")) {
   loadClassesIntoProjetSelect();
+  document.getElementById("classe-filter").addEventListener("change", (e) => {
+    if (e.target.value) {
+      loadProjets(parseInt(e.target.value));
+    } else {
+      document.getElementById("projets-list").innerHTML = "";
+    }
+  });
   document.getElementById("create-projet").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
@@ -113,13 +120,18 @@ if (document.getElementById("create-projet")) {
       await api("/api/projets", { method: "POST", body: JSON.stringify(data) });
       e.target.reset();
       toast("Projet créé !");
-      loadProjets();
+      if (document.getElementById("groupsContainer")) {
+        if (typeof resetGroups === "function") resetGroups();
+      } else {
+        loadProjets(data.classe_id);
+      }
     } catch (err) { toast(err.message, "error"); }
   });
 }
 
-async function loadProjets() {
-  const projets = await api("/api/projets");
+async function loadProjets(classeId) {
+  const params = classeId ? `?classe_id=${classeId}` : "";
+  const projets = await api("/api/projets" + params);
   const list = document.getElementById("projets-list");
   list.innerHTML = projets.map((p) => `
     <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
@@ -136,11 +148,12 @@ async function deleteProjet(id) {
   try {
     await api(`/api/projets/${id}`, { method: "DELETE" });
     toast("Projet supprimé.");
-    loadProjets();
+    const select = document.getElementById("classe-filter");
+    if (select && select.value) {
+      loadProjets(parseInt(select.value));
+    }
   } catch (err) { toast(err.message, "error"); }
 }
-
-if (document.getElementById("projets-list")) loadProjets();
 
 // --- Groupes page ---
 async function loadProjetsIntoGroupeSelect() {

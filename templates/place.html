@@ -62,11 +62,16 @@
         color: #a0a0a0;
         user-select: none;
     }
-    .new-projet-input {
-        border: 2px dashed #6366f1;
+    .projet-card {
+        cursor: pointer;
+        transition: 0.15s;
+    }
+    .projet-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .projet-card.selected {
+        border: 2px solid #6366f1;
         background: #eef2ff;
-        border-radius: 4px;
-        padding: 2px 8px;
     }
 </style>
 {% endblock %}
@@ -74,26 +79,28 @@
 <div class="space-y-6">
 
     <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <div class="flex items-center gap-4 flex-wrap">
+        <div class="flex items-center gap-4">
             <select id="classSelect" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">-- Choisir une classe --</option>
             </select>
-            <select id="projetSelect" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled>
-                <option value="">-- Choisir un projet --</option>
-            </select>
-            <input id="newProjetInput" type="text" placeholder="Nouveau projet..." style="display:none"
-                   class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 new-projet-input">
+            <input id="newProjetName" type="text" placeholder="Nom du nouveau projet" required
+                   class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
             <button id="createProjetBtn" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition w-fit" disabled>
-                Créer un projet
+                Créer
             </button>
         </div>
     </div>
+
+    <div id="projets-list" class="grid gap-4 mb-8"></div>
+
+    <div id="placementZone" style="display:none">
 
     <div id="groupsContainer" class="flex flex-wrap gap-5"></div>
 
     <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Élèves non affectés</h3>
         <div class="students-zone" id="unassigned"></div>
+    </div>
     </div>
 </div>
 {% endblock %}
@@ -102,9 +109,9 @@
 const container = document.getElementById('groupsContainer');
 const unassigned = document.getElementById('unassigned');
 const classSelect = document.getElementById('classSelect');
-const projetSelect = document.getElementById('projetSelect');
-const newProjetInput = document.getElementById('newProjetInput');
+const newProjetName = document.getElementById('newProjetName');
 const createProjetBtn = document.getElementById('createProjetBtn');
+const projetsList = document.getElementById('projets-list');
 let currentProjetId = null;
 let currentClasseId = null;
 let groupCount = 0;
@@ -132,75 +139,116 @@ async function loadClasses() {
     });
 }
 
+// --- Chargement des projets ---
+async function loadProjets(classeId) {
+    const projets = await api('/api/projets?classe_id=' + classeId);
+    projetsList.innerHTML = projets.map((p) => `
+        <div class="bg-white rounded-lg shadow p-4 projet-card flex justify-between items-center${currentProjetId === p.id ? ' selected' : ''}" data-id="${p.id}">
+            <h3 class="font-semibold text-gray-900 projet-name">${p.nom}</h3>
+            ${p.created_at ? `<p class="text-[10px] text-gray-400 italic">${new Date(p.created_at).toLocaleDateString('fr-FR')}</p>` : ''}
+            <div class="flex items-center gap-3">
+                <button onclick="renameProjet(${p.id}, this)" class="text-indigo-500 hover:text-indigo-700 text-sm">Renommer</button>
+                <button onclick="deleteProjet(${p.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+            </div>
+        </div>`).join("") || '<p class="text-gray-400 italic">Aucun projet pour cette classe.</p>';
+
+    projetsList.querySelectorAll('.projet-card').forEach(card => {
+        card.addEventListener('dblclick', () => {
+            const id = parseInt(card.dataset.id);
+            selectProjet(id);
+        });
+    });
+}
+
+// --- Sélection d'un projet ---
+async function selectProjet(projetId) {
+    currentProjetId = projetId;
+    await loadPlacement(currentClasseId, projetId);
+    loadProjets(currentClasseId);
+}
+
+// --- Suppression d'un projet ---
+async function deleteProjet(id) {
+    if (!confirm("Supprimer ce projet ?")) return;
+    try {
+        await api('/api/projets/' + id, { method: 'DELETE' });
+        if (currentProjetId === id) {
+            currentProjetId = null;
+            document.getElementById('placementZone').style.display = 'none';
+        }
+        loadProjets(currentClasseId);
+    } catch (err) {
+        alert('Erreur : ' + err.message);
+    }
+}
+
+// --- Renommer un projet ---
+function renameProjet(id, btn) {
+    const card = btn.closest('.projet-card');
+    const h3 = card.querySelector('.projet-name');
+    const current = h3.textContent.trim();
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = current;
+    input.className = 'border rounded px-2 py-1 text-sm w-48 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
+    h3.replaceWith(input);
+    input.focus();
+    input.select();
+    async function save() {
+        const val = input.value.trim() || current;
+        const newH3 = document.createElement('h3');
+        newH3.className = 'font-semibold text-gray-900 projet-name';
+        newH3.textContent = val;
+        input.replaceWith(newH3);
+        if (val !== current) {
+            try {
+                await api('/api/projets/' + id, {
+                    method: 'PUT',
+                    body: JSON.stringify({ nom: val })
+                });
+            } catch (err) {
+                alert('Erreur : ' + err.message);
+                newH3.textContent = current;
+            }
+        }
+    }
+    input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+    input.addEventListener('blur', save);
+}
+
 // --- Changement de classe ---
 classSelect.addEventListener('change', async (e) => {
     currentClasseId = e.target.value ? parseInt(e.target.value) : null;
-    projetSelect.innerHTML = '<option value="">-- Choisir un projet --</option>';
-    createProjetBtn.disabled = true;
     currentProjetId = null;
     resetGroups();
     unassigned.innerHTML = '';
+    projetsList.innerHTML = '';
+    document.getElementById('placementZone').style.display = 'none';
 
     if (!currentClasseId) {
-        projetSelect.disabled = true;
+        createProjetBtn.disabled = true;
         return;
     }
-
-    const projets = await api('/api/projets?classe_id=' + currentClasseId);
-    projetSelect.disabled = false;
     createProjetBtn.disabled = false;
-    if (projets.length === 0) {
-        projetSelect.innerHTML += '<option value="" disabled>Aucun projet</option>';
-    } else {
-        projets.forEach(p => {
-            const opt = document.createElement('option');
-            opt.value = p.id;
-            opt.textContent = p.nom;
-            projetSelect.appendChild(opt);
-        });
-    }
+    loadProjets(currentClasseId);
 });
 
 // --- Création projet ---
 createProjetBtn.addEventListener('click', async () => {
     if (!currentClasseId) return;
-    const nom = newProjetInput.style.display === 'none' ? null : newProjetInput.value.trim();
-    if (!nom) {
-        newProjetInput.style.display = 'inline-block';
-        newProjetInput.focus();
-        newProjetInput.placeholder = 'Nom du nouveau projet...';
-        createProjetBtn.textContent = 'Valider';
-        return;
-    }
+    const nom = newProjetName.value.trim();
+    if (!nom) { alert('Veuillez saisir un nom de projet.'); return; }
     try {
         const p = await api('/api/projets', {
             method: 'POST',
             body: JSON.stringify({ nom: nom, classe_id: currentClasseId })
         });
-        newProjetInput.style.display = 'none';
-        newProjetInput.value = '';
-        createProjetBtn.textContent = 'Créer un projet';
-        const opt = document.createElement('option');
-        opt.value = p.id;
-        opt.textContent = p.nom;
-        projetSelect.appendChild(opt);
-        projetSelect.value = p.id;
-        projetSelect.dispatchEvent(new Event('change'));
+        newProjetName.value = '';
+        await loadProjets(currentClasseId);
+        selectProjet(p.id);
     } catch (err) {
         alert('Erreur : ' + err.message);
     }
-});
-
-// --- Changement de projet ---
-projetSelect.addEventListener('change', async (e) => {
-    if (!e.target.value) {
-        currentProjetId = null;
-        resetGroups();
-        unassigned.innerHTML = '';
-        return;
-    }
-    currentProjetId = parseInt(e.target.value);
-    await loadPlacement(currentClasseId, currentProjetId);
 });
 
 // --- Chargement complet du placement (groupes + élèves non affectés) ---
@@ -210,7 +258,7 @@ async function loadPlacement(classeId, projetId) {
 
     if (!classeId || !projetId) return;
 
-    // Charger les groupes du projet
+    document.getElementById('placementZone').style.display = '';
     const groupes = await api('/api/groupes?projet_id=' + projetId);
     groupCount = 0;
     container.innerHTML = '';
@@ -245,12 +293,17 @@ async function loadPlacement(classeId, projetId) {
         groupCount++;
     }
 
+    if (groupes.length === 0) {
+        addGroup();
+        addGroup();
+        renderAddButton();
+    }
+
     enableDropZones();
     enableRenameGroups();
     renderAddButton();
     enableDragStudents();
 
-    // Charger les élèves non affectés pour ce projet
     const unassignedEleves = await api('/api/eleves?classe_id=' + classeId + '&projet_id=' + projetId + '&groupe_id=0');
     currentEleves = unassignedEleves;
     unassignedEleves.forEach(e => {
@@ -364,6 +417,13 @@ function enableDragStudents() {
                 updateCounters();
             }, 0);
         });
+        card.addEventListener('dblclick', e => {
+            if (card.closest('.students-zone') !== unassigned) {
+                unassigned.appendChild(card);
+                updateCounters();
+                saveAssignments();
+            }
+        });
     });
 }
 
@@ -447,7 +507,6 @@ async function saveAssignments() {
         if (name) groupMap[name] = box;
     });
 
-    // Élèves dans les groupes
     document.querySelectorAll('.group-box').forEach(group => {
         const groupName = group.querySelector('.group-title')?.textContent || '';
         const cards = group.querySelectorAll('.student-card');
@@ -469,7 +528,6 @@ async function saveAssignments() {
         });
     });
 
-    // Non affectés : retirer de tous les groupes de CE projet
     const unassignedIds = [...unassigned.querySelectorAll('.student-card')]
         .map(card => parseInt(card.dataset.id));
     if (unassignedIds.length > 0) {
