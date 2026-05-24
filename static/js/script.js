@@ -41,14 +41,28 @@ if (document.getElementById("create-classe")) {
 async function loadClasses() {
   const classes = await api("/api/classes");
   const list = document.getElementById("classes-list");
-  list.innerHTML = classes.map((c) => `
-    <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
-      <div>
-        <h3 class="font-semibold text-gray-900">${c.nom}</h3>
-        <p class="text-sm text-gray-500">${c.description || ""}</p>
-      </div>
-      <button onclick="deleteClasse(${c.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
-    </div>`).join("");
+  const cards = await Promise.all(classes.map(async (c) => {
+    let elevesHtml = "";
+    try {
+      const eleves = await api(`/api/eleves?classe_id=${c.id}`);
+      if (eleves.length) {
+        elevesHtml = `
+          <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 italic">
+            ${eleves.map((e) => `<li class="cursor-pointer" data-eleve>${e.nom} ${e.prenom}</li>`).join("")}
+          </ul>`;
+      }
+    } catch (e) { /* ignore */ }
+    return `
+      <div class="bg-white rounded-lg shadow p-4 flex justify-between items-start">
+        <div class="flex-1">
+          <h3 class="font-semibold text-gray-900">${c.nom}</h3>
+          <p class="text-sm text-gray-500">${c.description || ""}</p>
+          ${elevesHtml}
+        </div>
+        <button onclick="deleteClasse(${c.id})" class="text-red-500 hover:text-red-700 text-sm ml-4">Supprimer</button>
+      </div>`;
+  }));
+  list.innerHTML = cards.join("");
 }
 
 async function deleteClasse(id) {
@@ -60,7 +74,14 @@ async function deleteClasse(id) {
   } catch (err) { toast(err.message, "error"); }
 }
 
-if (document.getElementById("classes-list")) loadClasses();
+if (document.getElementById("classes-list")) {
+  loadClasses();
+  document.getElementById("classes-list").addEventListener("click", (e) => {
+    if (e.target.closest("[data-eleve]")) {
+      toast("La modification des élèves se fait par l'onglet Élèves dans le menu.");
+    }
+  });
+}
 
 // --- Projets page ---
 async function loadClassesIntoProjetSelect() {

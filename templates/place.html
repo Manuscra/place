@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Répartition des élèves - Place{% endblock %}
+{% block page_title %}Répartition des élèves{% endblock %}
 {% block head_extra %}
 <style>
     .group-box { min-height: 320px; }
@@ -66,15 +67,23 @@
 {% block content %}
 <div class="space-y-6">
 
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <form id="create-projet" class="flex items-center gap-4">
+            <select id="classSelect" name="classe_id" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">-- Choisir une classe --</option>
+            </select>
+            <input type="text" name="nom" placeholder="Nom du nouveau projet" required
+                   class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition w-fit">
+                Créer
+            </button>
+        </form>
+    </div>
+
     <div id="groupsContainer" class="flex flex-wrap gap-5"></div>
 
     <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex items-center justify-between mb-4">
-            <h3 class="text-lg font-semibold text-gray-900">Élèves non affectés</h3>
-            <select id="classSelect" class="border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                <option value="">-- Sélectionnez une classe --</option>
-            </select>
-        </div>
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">Élèves non affectés</h3>
         <div class="students-zone" id="unassigned"></div>
     </div>
 </div>

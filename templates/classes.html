@@ -1,14 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Classes - Place{% endblock %}
+{% block page_title %}Classes{% endblock %}
 {% block content %}
-<h1 class="text-2xl font-bold text-gray-900 mb-6">Classes</h1>
 
 <div class="bg-white rounded-lg shadow p-6 mb-8">
-    <h2 class="text-lg font-semibold mb-4">Nouvelle classe</h2>
-    <form id="create-classe" class="flex flex-col gap-4 max-w-md">
-        <input type="text" name="nom" placeholder="Nom de la classe" required
+    <form id="create-classe" class="flex items-center gap-4">
+        <input type="text" name="nom" placeholder="Nom de la nouvelle classe" required
                class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-        <input type="text" name="description" placeholder="Description"
+        <input type="text" name="description" placeholder="Prof. Principal"
                class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
         <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition w-fit">
             Créer
