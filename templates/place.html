@@ -33,6 +33,10 @@
         border-radius: 20px;
         padding: 2px 10px;
         font-size: 12px;
+        display: inline-block;
+        min-width: 68px;
+        text-align: center;
+        white-space: nowrap;
     }
     .rename-input {
         width: 140px;
@@ -270,7 +274,7 @@ async function loadPlacement(classeId, projetId) {
         div.className = 'bg-white rounded-lg shadow group-box w-[260px] overflow-hidden';
         div.dataset.groupeId = g.id;
         div.innerHTML = `
-            <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center">
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center gap-3">
                 <h3 class="group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200">${g.nom}</h3>
                 <div class="flex items-center gap-3">
                     <span class="badge">${eleves.length} élève${eleves.length > 1 ? 's' : ''}</span>
@@ -339,7 +343,7 @@ function addGroup() {
     const div = document.createElement('div');
     div.className = 'bg-white rounded-lg shadow group-box w-[260px] overflow-hidden';
     div.innerHTML = `
-        <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center">
+        <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center gap-3">
             <h3 class="group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200">Groupe ${letter}</h3>
             <div class="flex items-center gap-3">
                 <span class="badge">0 élève</span>

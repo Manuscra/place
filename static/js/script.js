@@ -58,6 +58,16 @@ async function loadClasses() {
           <h3 class="font-semibold text-gray-900 cursor-pointer hover:text-indigo-600">${c.nom}</h3>
           <p class="text-sm text-gray-500">${c.description || ""}</p>
           ${elevesHtml}
+          <form onsubmit="event.preventDefault(); addEleveToClasse(${c.id}, this)" class="mt-3 border-t pt-3 hidden classe-form">
+            <span class="text-sm font-semibold text-gray-700 block mb-2">Ajout d'un élève :</span>
+            <div class="flex items-center gap-3">
+            <input type="text" name="nom" placeholder="Nom" required
+                   class="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-28">
+            <input type="text" name="prenom" placeholder="Prénom" required
+                   class="border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-28">
+            <button type="submit" class="bg-indigo-600 text-white text-sm rounded px-3 py-1 hover:bg-indigo-700 transition">Créer</button>
+            </div>
+          </form>
         </div>
         <button onclick="deleteClasse(${c.id})" class="text-red-500 hover:text-red-700 text-sm ml-4">Supprimer</button>
       </div>`;
@@ -74,6 +84,17 @@ async function deleteClasse(id) {
   } catch (err) { toast(err.message, "error"); }
 }
 
+async function addEleveToClasse(classeId, form) {
+  const data = Object.fromEntries(new FormData(form));
+  data.classe_id = classeId;
+  try {
+    await api("/api/eleves", { method: "POST", body: JSON.stringify(data) });
+    form.reset();
+    toast("Élève créé !");
+    loadClasses();
+  } catch (err) { toast(err.message, "error"); }
+}
+
 if (document.getElementById("classes-list")) {
   loadClasses();
   document.getElementById("classes-list").addEventListener("click", (e) => {
@@ -82,8 +103,11 @@ if (document.getElementById("classes-list")) {
     }
     const h3 = e.target.closest("h3");
     if (h3) {
-      const ul = h3.parentElement.querySelector("ul");
+      const parent = h3.parentElement;
+      const ul = parent.querySelector("ul");
       if (ul) ul.classList.toggle("hidden");
+      const form = parent.querySelector(".classe-form");
+      if (form) form.classList.toggle("hidden");
     }
   });
 }
