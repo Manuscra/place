@@ -47,7 +47,7 @@ async function loadClasses() {
       const eleves = await api(`/api/eleves?classe_id=${c.id}`);
       if (eleves.length) {
         elevesHtml = `
-          <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 italic">
+          <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 italic hidden">
             ${eleves.map((e) => `<li class="cursor-pointer" data-eleve>${e.nom} ${e.prenom}</li>`).join("")}
           </ul>`;
       }
@@ -55,7 +55,7 @@ async function loadClasses() {
     return `
       <div class="bg-white rounded-lg shadow p-4 flex justify-between items-start">
         <div class="flex-1">
-          <h3 class="font-semibold text-gray-900">${c.nom}</h3>
+          <h3 class="font-semibold text-gray-900 cursor-pointer hover:text-indigo-600">${c.nom}</h3>
           <p class="text-sm text-gray-500">${c.description || ""}</p>
           ${elevesHtml}
         </div>
@@ -79,6 +79,11 @@ if (document.getElementById("classes-list")) {
   document.getElementById("classes-list").addEventListener("click", (e) => {
     if (e.target.closest("[data-eleve]")) {
       toast("La modification des élèves se fait par l'onglet Élèves dans le menu.");
+    }
+    const h3 = e.target.closest("h3");
+    if (h3) {
+      const ul = h3.parentElement.querySelector("ul");
+      if (ul) ul.classList.toggle("hidden");
     }
   });
 }

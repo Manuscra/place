@@ -11,7 +11,7 @@ eleves_bp = Blueprint("eleves", __name__, url_prefix="/api/eleves")
 def list_eleves():
     classe_id = request.args.get("classe_id", type=int)
     groupe_id = request.args.get("groupe_id", type=int)
-    query = Eleve.query.order_by(Eleve.nom)
+    query = Eleve.query.order_by(Eleve.nom, Eleve.prenom)
     if classe_id is not None:
         query = query.filter_by(classe_id=classe_id)
     if groupe_id is not None:
