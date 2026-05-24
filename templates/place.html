@@ -62,22 +62,31 @@
         color: #a0a0a0;
         user-select: none;
     }
+    .new-projet-input {
+        border: 2px dashed #6366f1;
+        background: #eef2ff;
+        border-radius: 4px;
+        padding: 2px 8px;
+    }
 </style>
 {% endblock %}
 {% block content %}
 <div class="space-y-6">
 
     <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <form id="create-projet" class="flex items-center gap-4">
-            <select id="classSelect" name="classe_id" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="flex items-center gap-4 flex-wrap">
+            <select id="classSelect" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="">-- Choisir une classe --</option>
             </select>
-            <input type="text" name="nom" placeholder="Nom du nouveau projet" required
-                   class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition w-fit">
-                Créer
+            <select id="projetSelect" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" disabled>
+                <option value="">-- Choisir un projet --</option>
+            </select>
+            <input id="newProjetInput" type="text" placeholder="Nouveau projet..." style="display:none"
+                   class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 new-projet-input">
+            <button id="createProjetBtn" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition w-fit" disabled>
+                Créer un projet
             </button>
-        </form>
+        </div>
     </div>
 
     <div id="groupsContainer" class="flex flex-wrap gap-5"></div>
@@ -93,13 +102,15 @@
 const container = document.getElementById('groupsContainer');
 const unassigned = document.getElementById('unassigned');
 const classSelect = document.getElementById('classSelect');
+const projetSelect = document.getElementById('projetSelect');
+const newProjetInput = document.getElementById('newProjetInput');
+const createProjetBtn = document.getElementById('createProjetBtn');
+let currentProjetId = null;
+let currentClasseId = null;
 let groupCount = 0;
 let draggedStudent = null;
 let currentEleves = [];
 
-// =====================================
-// API
-// =====================================
 async function api(url, opts = {}) {
     const res = await fetch(API_BASE + url, {
         headers: { 'Content-Type': 'application/json', ...opts.headers },
@@ -109,12 +120,10 @@ async function api(url, opts = {}) {
     return res.json();
 }
 
-// =====================================
-// CHARGEMENT CLASSES
-// =====================================
+// --- Chargement des classes ---
 async function loadClasses() {
     const classes = await api('/api/classes');
-    classSelect.innerHTML = '<option value="">-- Sélectionnez une classe --</option>';
+    classSelect.innerHTML = '<option value="">-- Choisir une classe --</option>';
     classes.forEach(c => {
         const opt = document.createElement('option');
         opt.value = c.id;
@@ -123,25 +132,135 @@ async function loadClasses() {
     });
 }
 
-// =====================================
-// CHARGEMENT ÉLÈVES
-// =====================================
-async function loadEleves(classeId) {
+// --- Changement de classe ---
+classSelect.addEventListener('change', async (e) => {
+    currentClasseId = e.target.value ? parseInt(e.target.value) : null;
+    projetSelect.innerHTML = '<option value="">-- Choisir un projet --</option>';
+    createProjetBtn.disabled = true;
+    currentProjetId = null;
     resetGroups();
     unassigned.innerHTML = '';
-    const eleves = await api(`/api/eleves?classe_id=${classeId}&groupe_id=0`);
-    currentEleves = eleves;
-    eleves.forEach(e => {
-        const card = createStudentCard(e);
-        unassigned.appendChild(card);
+
+    if (!currentClasseId) {
+        projetSelect.disabled = true;
+        return;
+    }
+
+    const projets = await api('/api/projets?classe_id=' + currentClasseId);
+    projetSelect.disabled = false;
+    createProjetBtn.disabled = false;
+    if (projets.length === 0) {
+        projetSelect.innerHTML += '<option value="" disabled>Aucun projet</option>';
+    } else {
+        projets.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.nom;
+            projetSelect.appendChild(opt);
+        });
+    }
+});
+
+// --- Création projet ---
+createProjetBtn.addEventListener('click', async () => {
+    if (!currentClasseId) return;
+    const nom = newProjetInput.style.display === 'none' ? null : newProjetInput.value.trim();
+    if (!nom) {
+        newProjetInput.style.display = 'inline-block';
+        newProjetInput.focus();
+        newProjetInput.placeholder = 'Nom du nouveau projet...';
+        createProjetBtn.textContent = 'Valider';
+        return;
+    }
+    try {
+        const p = await api('/api/projets', {
+            method: 'POST',
+            body: JSON.stringify({ nom: nom, classe_id: currentClasseId })
+        });
+        newProjetInput.style.display = 'none';
+        newProjetInput.value = '';
+        createProjetBtn.textContent = 'Créer un projet';
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = p.nom;
+        projetSelect.appendChild(opt);
+        projetSelect.value = p.id;
+        projetSelect.dispatchEvent(new Event('change'));
+    } catch (err) {
+        alert('Erreur : ' + err.message);
+    }
+});
+
+// --- Changement de projet ---
+projetSelect.addEventListener('change', async (e) => {
+    if (!e.target.value) {
+        currentProjetId = null;
+        resetGroups();
+        unassigned.innerHTML = '';
+        return;
+    }
+    currentProjetId = parseInt(e.target.value);
+    await loadPlacement(currentClasseId, currentProjetId);
+});
+
+// --- Chargement complet du placement (groupes + élèves non affectés) ---
+async function loadPlacement(classeId, projetId) {
+    resetGroups();
+    unassigned.innerHTML = '';
+
+    if (!classeId || !projetId) return;
+
+    // Charger les groupes du projet
+    const groupes = await api('/api/groupes?projet_id=' + projetId);
+    groupCount = 0;
+    container.innerHTML = '';
+
+    for (const g of groupes) {
+        const letter = String.fromCharCode(65 + groupCount);
+        const eleves = await api('/api/eleves?groupe_id=' + g.id);
+        const div = document.createElement('div');
+        div.className = 'bg-white rounded-lg shadow group-box w-[260px] overflow-hidden';
+        div.dataset.groupeId = g.id;
+        div.innerHTML = `
+            <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center">
+                <h3 class="group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200">${g.nom}</h3>
+                <div class="flex items-center gap-3">
+                    <span class="badge">${eleves.length} élève${eleves.length > 1 ? 's' : ''}</span>
+                    <button class="delete-group-btn text-white hover:text-red-300 font-bold text-sm leading-none" title="Supprimer ce groupe">&#128465;</button>
+                </div>
+            </div>
+            <div class="p-3">
+                <div class="students-zone"></div>
+            </div>
+        `;
+        const zone = div.querySelector('.students-zone');
+        eleves.forEach(e => {
+            zone.appendChild(createStudentCard(e));
+        });
+        container.appendChild(div);
+        div.querySelector('.delete-group-btn').addEventListener('click', ev => {
+            ev.stopPropagation();
+            deleteGroup(div);
+        });
+        groupCount++;
+    }
+
+    enableDropZones();
+    enableRenameGroups();
+    renderAddButton();
+    enableDragStudents();
+
+    // Charger les élèves non affectés pour ce projet
+    const unassignedEleves = await api('/api/eleves?classe_id=' + classeId + '&projet_id=' + projetId + '&groupe_id=0');
+    currentEleves = unassignedEleves;
+    unassignedEleves.forEach(e => {
+        unassigned.appendChild(createStudentCard(e));
     });
     enableDragStudents();
     updateCounters();
 }
 
-// =====================================
-// CRÉER CARTE ÉLÈVE
-// =====================================
+// --- Carte élève ---
 function createStudentCard(eleve) {
     const div = document.createElement('div');
     div.className = 'student-card';
@@ -151,9 +270,7 @@ function createStudentCard(eleve) {
     return div;
 }
 
-// =====================================
-// RESET GROUPES
-// =====================================
+// --- Reset ---
 function resetGroups() {
     container.innerHTML = '';
     groupCount = 0;
@@ -162,9 +279,7 @@ function resetGroups() {
     renderAddButton();
 }
 
-// =====================================
-// AJOUT GROUPE
-// =====================================
+// --- Ajout groupe ---
 function addGroup() {
     if (groupCount >= 26) return;
     const letter = String.fromCharCode(65 + groupCount);
@@ -183,8 +298,8 @@ function addGroup() {
         </div>
     `;
     container.appendChild(div);
-    div.querySelector('.delete-group-btn').addEventListener('click', e => {
-        e.stopPropagation();
+    div.querySelector('.delete-group-btn').addEventListener('click', ev => {
+        ev.stopPropagation();
         deleteGroup(div);
     });
     enableDropZones();
@@ -194,9 +309,7 @@ function addGroup() {
     renderAddButton();
 }
 
-// =====================================
-// SUPPRESSION GROUPE
-// =====================================
+// --- Suppression groupe ---
 async function deleteGroup(groupBox) {
     if (!confirm("Supprimer ce groupe ? Les élèves seront replacés dans la liste des non affectés.")) return;
     const groupeId = groupBox.dataset.groupeId;
@@ -210,7 +323,7 @@ async function deleteGroup(groupBox) {
     await saveAssignments();
     if (groupeId) {
         try {
-            await fetch(API_BASE + `/api/groupes/${groupeId}`, { method: 'DELETE' });
+            await fetch(API_BASE + '/api/groupes/' + groupeId, { method: 'DELETE' });
         } catch (e) { /* ignore */ }
     }
 }
@@ -219,7 +332,7 @@ function reletterGroups() {
     container.querySelectorAll('.group-box').forEach((box, i) => {
         const title = box.querySelector('.group-title');
         if (title) {
-            title.textContent = `Groupe ${String.fromCharCode(65 + i)}`;
+            title.textContent = 'Groupe ' + String.fromCharCode(65 + i);
         }
     });
 }
@@ -235,9 +348,7 @@ function renderAddButton() {
     container.appendChild(div);
 }
 
-// =====================================
-// DRAG & DROP
-// =====================================
+// --- Drag & drop ---
 function enableDragStudents() {
     document.querySelectorAll('.student-card').forEach(card => {
         if (card.dataset.dragEnabled) return;
@@ -251,7 +362,6 @@ function enableDragStudents() {
                 card.style.display = 'block';
                 draggedStudent = null;
                 updateCounters();
-                saveAssignments();
             }, 0);
         });
     });
@@ -280,9 +390,7 @@ function enableDropZones() {
     });
 }
 
-// =====================================
-// RENOMMAGE
-// =====================================
+// --- Renommage ---
 function enableRenameGroups() {
     document.querySelectorAll('.group-title').forEach(title => {
         if (title.dataset.renameEnabled) return;
@@ -301,9 +409,19 @@ function enableRenameGroups() {
                 const h3 = document.createElement('h3');
                 h3.className = 'group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200';
                 h3.textContent = val;
+                const groupBox = input.closest('.group-box');
+                const groupeId = groupBox ? groupBox.dataset.groupeId : null;
                 input.replaceWith(h3);
                 enableRenameGroups();
-                saveAssignments();
+                if (groupeId && val !== current) {
+                    fetch(API_BASE + '/api/groupes/' + groupeId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nom: val })
+                    }).then(() => saveAssignments()).catch(() => {});
+                } else {
+                    saveAssignments();
+                }
             }
             input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
             input.addEventListener('blur', save);
@@ -311,9 +429,7 @@ function enableRenameGroups() {
     });
 }
 
-// =====================================
-// COMPTEURS
-// =====================================
+// --- Compteurs ---
 function updateCounters() {
     document.querySelectorAll('.group-box').forEach(group => {
         const count = group.querySelectorAll('.student-card').length;
@@ -322,69 +438,52 @@ function updateCounters() {
     });
 }
 
-// =====================================
-// SAUVEGARDE
-// =====================================
+// --- Sauvegarde ---
 async function saveAssignments() {
+    if (!currentProjetId) return;
     const groupMap = {};
     document.querySelectorAll('.group-box').forEach(box => {
         const name = box.querySelector('.group-title')?.textContent || '';
         if (name) groupMap[name] = box;
     });
 
-    const updates = [];
+    // Élèves dans les groupes
     document.querySelectorAll('.group-box').forEach(group => {
         const groupName = group.querySelector('.group-title')?.textContent || '';
         const cards = group.querySelectorAll('.student-card');
         cards.forEach(card => {
-            updates.push({
+            const body = JSON.stringify({
                 eleve_id: parseInt(card.dataset.id),
-                groupe: groupName
+                groupe: groupName,
+                projet_id: currentProjetId
             });
-        });
-    });
-    // Non affectés
-    unassigned.querySelectorAll('.student-card').forEach(card => {
-        updates.push({
-            eleve_id: parseInt(card.dataset.id),
-            groupe: null
+            fetch(API_BASE + '/api/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body
+            }).then(res => res.json()).then(data => {
+                if (data.groupe_id && groupMap[groupName]) {
+                    groupMap[groupName].dataset.groupeId = data.groupe_id;
+                }
+            }).catch(() => {});
         });
     });
 
-    for (const u of updates) {
-        try {
-            if (u.groupe) {
-                const res = await fetch(API_BASE + '/api/assign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ eleve_id: u.eleve_id, groupe: u.groupe })
-                });
-                const data = await res.json();
-                if (data.groupe_id && groupMap[u.groupe]) {
-                    groupMap[u.groupe].dataset.groupeId = data.groupe_id;
-                }
-            } else {
-                await fetch(API_BASE + '/api/unassign', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ eleve_id: u.eleve_id })
-                });
-            }
-        } catch (e) { /* ignore */ }
+    // Non affectés : retirer de tous les groupes de CE projet
+    const unassignedIds = [...unassigned.querySelectorAll('.student-card')]
+        .map(card => parseInt(card.dataset.id));
+    if (unassignedIds.length > 0) {
+        for (const id of unassignedIds) {
+            fetch(API_BASE + '/api/unassign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ eleve_id: id, projet_id: currentProjetId })
+            }).catch(() => {});
+        }
     }
 }
 
-// =====================================
-// EVENTS
-// =====================================
-classSelect.addEventListener('change', e => {
-    if (e.target.value) loadEleves(e.target.value);
-    else { resetGroups(); unassigned.innerHTML = ''; }
-});
-
-// =====================================
-// INIT
-// =====================================
+// --- Init ---
 loadClasses();
 resetGroups();
 enableDropZones();

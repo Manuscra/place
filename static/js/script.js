@@ -209,29 +209,14 @@ async function loadClassesIntoEleveSelect() {
   });
 }
 
-async function loadGroupesIntoEleveSelect() {
-  const groupes = await api("/api/groupes");
-  const select = document.querySelector("#create-eleve select[name=groupe_id]");
-  if (!select) return;
-  groupes.forEach((g) => {
-    const opt = document.createElement("option");
-    opt.value = g.id;
-    opt.textContent = g.nom;
-    select.appendChild(opt);
-  });
-}
-
 if (document.getElementById("create-eleve")) {
   loadClassesIntoEleveSelect();
-  loadGroupesIntoEleveSelect();
   document.getElementById("create-eleve").addEventListener("submit", async (e) => {
     e.preventDefault();
     const form = new FormData(e.target);
     const data = Object.fromEntries(form);
     if (!data.classe_id) return toast("Veuillez choisir une classe", "error");
     data.classe_id = parseInt(data.classe_id);
-    if (data.groupe_id) data.groupe_id = parseInt(data.groupe_id);
-    else delete data.groupe_id;
     try {
       await api("/api/eleves", { method: "POST", body: JSON.stringify(data) });
       e.target.reset();
@@ -250,7 +235,6 @@ async function loadEleves() {
         <h3 class="font-semibold text-gray-900">${e.prenom} ${e.nom}</h3>
         <p class="text-sm text-gray-500">
           Classe #${e.classe_id}
-          ${e.groupe_id ? " — Groupe #" + e.groupe_id : " — Non affecté"}
         </p>
       </div>
       <button onclick="deleteEleve(${e.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>

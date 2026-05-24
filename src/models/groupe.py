@@ -12,7 +12,7 @@ class Groupe(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     projet = db.relationship("Projet", back_populates="groupes")
-    eleves = db.relationship("Eleve", back_populates="groupe", lazy="selectin")
+    eleves = db.relationship("Eleve", secondary="eleve_groupes", back_populates="groupes", lazy="selectin")
 
     def to_dict(self):
         return {

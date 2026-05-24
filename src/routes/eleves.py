@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 
 from ..database import db
-from ..models import Eleve
+from ..models import Eleve, EleveGroupe, Groupe
 from ..schemas import EleveCreate, EleveOut, EleveUpdate
 
 eleves_bp = Blueprint("eleves", __name__, url_prefix="/api/eleves")
@@ -11,14 +11,23 @@ eleves_bp = Blueprint("eleves", __name__, url_prefix="/api/eleves")
 def list_eleves():
     classe_id = request.args.get("classe_id", type=int)
     groupe_id = request.args.get("groupe_id", type=int)
+    projet_id = request.args.get("projet_id", type=int)
     query = Eleve.query.order_by(Eleve.nom, Eleve.prenom)
     if classe_id is not None:
         query = query.filter_by(classe_id=classe_id)
     if groupe_id is not None:
         if groupe_id == 0:
-            query = query.filter(Eleve.groupe_id.is_(None))
+            if projet_id is not None:
+                subquery = (
+                    db.session.query(EleveGroupe.eleve_id)
+                    .join(Groupe, EleveGroupe.groupe_id == Groupe.id)
+                    .filter(Groupe.projet_id == projet_id)
+                )
+            else:
+                subquery = db.session.query(EleveGroupe.eleve_id)
+            query = query.filter(Eleve.id.notin_(subquery))
         else:
-            query = query.filter_by(groupe_id=groupe_id)
+            query = query.join(Eleve.groupes).filter(Groupe.id == groupe_id)
     eleves = query.all()
     return jsonify([EleveOut.model_validate(e).model_dump(mode="json") for e in eleves])
 

@@ -109,14 +109,13 @@ class TestGroupeAPI:
 
 
 class TestEleveAPI:
-    def test_create_eleve(self, client, sample_classe, sample_groupe):
+    def test_create_eleve(self, client, sample_classe):
         resp = client.post(
             "/api/eleves",
             json={
                 "nom": "Dupont",
                 "prenom": "Alice",
                 "classe_id": sample_classe,
-                "groupe_id": sample_groupe,
             },
         )
         assert resp.status_code == 201
@@ -131,7 +130,7 @@ class TestEleveAPI:
     def test_list_eleves_by_classe(self, client, sample_classe, sample_groupe):
         client.post(
             "/api/eleves",
-            json={"nom": "Martin", "prenom": "Jean", "classe_id": sample_classe, "groupe_id": sample_groupe},
+            json={"nom": "Martin", "prenom": "Jean", "classe_id": sample_classe},
         )
         resp = client.get(f"/api/eleves?classe_id={sample_classe}")
         assert resp.status_code == 200
