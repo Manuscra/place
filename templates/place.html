@@ -341,7 +341,7 @@ async function loadPlacement(classeId, projetId) {
     renderAddButton();
     enableDragStudents();
 
-    const unassignedEleves = await api('/api/eleves?classe_id=' + classeId + '&projet_id=' + projetId + '&groupe_id=0');
+    const unassignedEleves = await api('/api/eleves?classe_id=' + classeId + '&projet_id=' + projetId + '&groupe_id=0&present=true');
     currentEleves = unassignedEleves;
     unassignedEleves.forEach(e => {
         unassigned.appendChild(createStudentCard(e));

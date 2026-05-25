@@ -47,8 +47,8 @@ async function loadClasses() {
       const eleves = await api(`/api/eleves?classe_id=${c.id}`);
       if (eleves.length) {
         elevesHtml = `
-          <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 italic hidden">
-            ${eleves.map((e) => `<li>${e.nom} ${e.prenom}</li>`).join("")}
+          <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 hidden">
+            ${eleves.map((e) => `<li class="flex justify-between items-center" data-name="${e.nom} ${e.prenom}"><span>${e.nom} ${e.prenom}</span><div class="flex items-center gap-3"><label class="present-toggle${e.present !== false ? ' on' : ''}" title="${e.present !== false ? 'Présent' : 'Absent'}"><input type="checkbox" onchange="togglePresent(${e.id}, this)"${e.present !== false ? ' checked' : ''}></label> <button onclick="event.stopPropagation(); deleteClasseEleve(${e.id}, this)" class="text-indigo-400 hover:text-indigo-600 text-[10px] leading-none" title="Supprimer">&#128465;</button></div></li>`).join("")}
           </ul>`;
       }
     } catch (e) { /* ignore */ }
@@ -102,10 +102,36 @@ async function addEleveToClasse(classeId, form) {
     }
     ul.classList.remove("hidden");
     const li = document.createElement("li");
-    li.textContent = `${created.nom} ${created.prenom}`;
+    li.className = "flex justify-between items-center";
+    li.dataset.name = `${created.nom} ${created.prenom}`;
+    li.innerHTML = `<span>${created.nom} ${created.prenom}</span><div class="flex items-center gap-3"><label class="present-toggle on" title="Présent"><input type="checkbox" checked onchange="togglePresent(${created.id}, this)"></label> <button onclick="event.stopPropagation(); deleteClasseEleve(${created.id}, this)" class="text-indigo-400 hover:text-indigo-600 text-[10px] leading-none" title="Supprimer">&#128465;</button></div>`;
     ul.appendChild(li);
-    [...ul.children].sort((a, b) => a.textContent.localeCompare(b.textContent, "fr")).forEach(el => ul.appendChild(el));
+    [...ul.children].sort((a, b) => (a.dataset.name || a.textContent).localeCompare(b.dataset.name || b.textContent, "fr")).forEach(el => ul.appendChild(el));
   } catch (err) { toast(err.message, "error"); }
+}
+
+async function deleteClasseEleve(id, btn) {
+  if (!confirm("Supprimer cet élève ?")) return;
+  try {
+    await api(`/api/eleves/${id}`, { method: "DELETE" });
+    btn.closest("li").remove();
+    toast("Élève supprimé.");
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function togglePresent(id, checkbox) {
+  const label = checkbox.closest("label");
+  const present = checkbox.checked;
+  label.classList.toggle("on", present);
+  label.title = present ? "Présent" : "Absent";
+  try {
+    await api(`/api/eleves/${id}`, { method: "PUT", body: JSON.stringify({ present }) });
+  } catch (err) {
+    checkbox.checked = !present;
+    label.classList.toggle("on", !present);
+    label.title = !present ? "Présent" : "Absent";
+    toast(err.message, "error");
+  }
 }
 
 async function renameClasse(card) {
@@ -187,18 +213,21 @@ async function renameClasse(card) {
 }
 
 if (document.getElementById("classes-list")) {
+  const style = document.createElement("style");
+  style.textContent = `.present-toggle{position:relative;display:inline-flex;align-items:center;cursor:pointer;width:22px;height:12px;background:#d1d5db;border-radius:999px;transition:background .2s}.present-toggle input{position:absolute;opacity:0;width:0;height:0}.present-toggle.on{background:#6366f1}.present-toggle::after{content:'';position:absolute;top:1px;left:1px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.15)}.present-toggle.on::after{transform:translateX(10px)}`;
+  document.head.appendChild(style);
   loadClasses();
   document.getElementById("classes-list").addEventListener("click", (e) => {
-    const h3 = e.target.closest("h3.classe-name");
-    if (!h3) return;
-    if (h3._clickTimer) {
-      clearTimeout(h3._clickTimer);
-      h3._clickTimer = null;
+    if (e.target.closest("button, input, form, textarea")) return;
+    const card = e.target.closest("[data-id]");
+    if (!card) return;
+    if (card._clickTimer) {
+      clearTimeout(card._clickTimer);
+      card._clickTimer = null;
       return;
     }
-    h3._clickTimer = setTimeout(() => {
-      h3._clickTimer = null;
-      const card = h3.closest("[data-id]");
+    card._clickTimer = setTimeout(() => {
+      card._clickTimer = null;
       const ul = card.querySelector("ul");
       if (ul) ul.classList.toggle("hidden");
       const form = card.querySelector(".classe-form");
@@ -206,14 +235,13 @@ if (document.getElementById("classes-list")) {
     }, 250);
   });
   document.getElementById("classes-list").addEventListener("dblclick", (e) => {
-    const h3 = e.target.closest("h3.classe-name");
-    const prof = e.target.closest("p.classe-prof");
-    if (!h3 && !prof) return;
-    if (h3 && h3._clickTimer) {
-      clearTimeout(h3._clickTimer);
-      h3._clickTimer = null;
+    if (e.target.closest("button, input, form, textarea")) return;
+    const card = e.target.closest("[data-id]");
+    if (!card) return;
+    if (card._clickTimer) {
+      clearTimeout(card._clickTimer);
+      card._clickTimer = null;
     }
-    const card = (h3 || prof).closest("[data-id]");
     renameClasse(card);
   });
 }

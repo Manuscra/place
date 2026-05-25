@@ -12,9 +12,12 @@ def list_eleves():
     classe_id = request.args.get("classe_id", type=int)
     groupe_id = request.args.get("groupe_id", type=int)
     projet_id = request.args.get("projet_id", type=int)
+    present = request.args.get("present")
     query = Eleve.query.order_by(Eleve.nom, Eleve.prenom)
     if classe_id is not None:
         query = query.filter_by(classe_id=classe_id)
+    if present is not None:
+        query = query.filter_by(present=present.lower() == "true")
     if groupe_id is not None:
         if groupe_id == 0:
             if projet_id is not None:

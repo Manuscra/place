@@ -7,6 +7,7 @@ class EleveBase(BaseModel):
     nom: str = Field(..., min_length=1, max_length=100)
     prenom: str = Field(..., min_length=1, max_length=100)
     classe_id: int
+    present: bool = True
 
 
 class EleveCreate(EleveBase):
@@ -17,6 +18,7 @@ class EleveUpdate(BaseModel):
     nom: str | None = Field(default=None, min_length=1, max_length=100)
     prenom: str | None = Field(default=None, min_length=1, max_length=100)
     classe_id: int | None = None
+    present: bool | None = None
 
 
 class EleveOut(EleveBase):
