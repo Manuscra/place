@@ -48,15 +48,18 @@ async function loadClasses() {
       if (eleves.length) {
         elevesHtml = `
           <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 italic hidden">
-            ${eleves.map((e) => `<li class="cursor-pointer" data-eleve>${e.nom} ${e.prenom}</li>`).join("")}
+            ${eleves.map((e) => `<li>${e.nom} ${e.prenom}</li>`).join("")}
           </ul>`;
       }
     } catch (e) { /* ignore */ }
     return `
-      <div class="bg-white rounded-lg shadow p-4 flex justify-between items-start">
+      <div class="bg-white rounded-lg shadow p-4" data-id="${c.id}">
+        <div class="flex justify-between items-center">
+          <h3 class="font-semibold text-gray-900 cursor-pointer hover:text-indigo-600 classe-name">${c.nom}</h3>
+          <p class="text-[10px] text-gray-400 italic classe-prof">Prof. Principal: ${c.description || ''}</p>
+          <button onclick="deleteClasse(${c.id})" class="text-red-500 hover:text-red-700 text-sm leading-none ml-4" title="Supprimer cette classe">&#128465;</button>
+        </div>
         <div class="flex-1">
-          <h3 class="font-semibold text-gray-900 cursor-pointer hover:text-indigo-600">${c.nom}</h3>
-          <p class="text-sm text-gray-500">${c.description || ""}</p>
           ${elevesHtml}
           <form onsubmit="event.preventDefault(); addEleveToClasse(${c.id}, this)" class="mt-3 border-t pt-3 hidden classe-form">
             <span class="text-sm font-semibold text-gray-700 block mb-2">Ajout d'un élève :</span>
@@ -69,7 +72,6 @@ async function loadClasses() {
             </div>
           </form>
         </div>
-        <button onclick="deleteClasse(${c.id})" class="text-red-500 hover:text-red-700 text-sm ml-4">Supprimer</button>
       </div>`;
   }));
   list.innerHTML = cards.join("");
@@ -88,27 +90,131 @@ async function addEleveToClasse(classeId, form) {
   const data = Object.fromEntries(new FormData(form));
   data.classe_id = classeId;
   try {
-    await api("/api/eleves", { method: "POST", body: JSON.stringify(data) });
+    const created = await api("/api/eleves", { method: "POST", body: JSON.stringify(data) });
     form.reset();
     toast("Élève créé !");
-    loadClasses();
+    const card = form.closest(".bg-white");
+    let ul = card.querySelector("ul");
+    if (!ul) {
+      ul = document.createElement("ul");
+      ul.className = "mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 italic";
+      form.before(ul);
+    }
+    ul.classList.remove("hidden");
+    const li = document.createElement("li");
+    li.textContent = `${created.nom} ${created.prenom}`;
+    ul.appendChild(li);
+    [...ul.children].sort((a, b) => a.textContent.localeCompare(b.textContent, "fr")).forEach(el => ul.appendChild(el));
   } catch (err) { toast(err.message, "error"); }
+}
+
+async function renameClasse(card) {
+  const id = parseInt(card.dataset.id);
+  const h3 = card.querySelector("h3.classe-name");
+  const profP = card.querySelector("p.classe-prof");
+  const currentName = h3.textContent.trim();
+  const currentDesc = profP ? profP.textContent.replace("Prof. Principal: ", "").trim() : "";
+
+  const inputName = document.createElement("input");
+  inputName.type = "text";
+  inputName.value = currentName;
+  inputName.placeholder = currentName;
+  inputName.className = "border rounded px-2 py-1 text-sm w-40 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
+  h3.replaceWith(inputName);
+
+  let inputDesc = null;
+  if (profP) {
+    inputDesc = document.createElement("input");
+    inputDesc.type = "text";
+    inputDesc.value = currentDesc;
+    inputDesc.placeholder = currentDesc || "Prof. Principal";
+    inputDesc.className = "border rounded px-2 py-1 text-[10px] text-gray-400 italic w-32 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
+    profP.replaceWith(inputDesc);
+  }
+
+  inputName.focus();
+  inputName.select();
+
+  async function doSave() {
+    if (inputName._saving) return;
+    inputName._saving = true;
+    const valName = inputName.value.trim() || currentName;
+    const valDesc = inputDesc ? (inputDesc.value.trim() || currentDesc) : currentDesc;
+    const newH3 = document.createElement("h3");
+    newH3.className = "font-semibold text-gray-900 cursor-pointer hover:text-indigo-600 classe-name";
+    newH3.textContent = valName;
+    inputName.replaceWith(newH3);
+    if (inputDesc) {
+      const newP = document.createElement("p");
+      newP.className = "text-[10px] text-gray-400 italic classe-prof";
+      newP.textContent = "Prof. Principal: " + valDesc;
+      inputDesc.replaceWith(newP);
+    }
+    if (valName !== currentName || valDesc !== currentDesc) {
+      try {
+        const body = { nom: valName };
+        body.description = valDesc || null;
+        await api("/api/classes/" + id, {
+          method: "PUT",
+          body: JSON.stringify(body)
+        });
+      } catch (err) {
+        alert("Erreur : " + err.message);
+        newH3.textContent = currentName;
+        if (inputDesc) {
+          const revertP = document.createElement("p");
+          revertP.className = "text-[10px] text-gray-400 italic classe-prof";
+          revertP.textContent = "Prof. Principal: " + currentDesc;
+          newH3.parentElement.querySelector("p.classe-prof")?.replaceWith(revertP);
+        }
+      }
+    }
+  }
+
+  function saveWithDelay(sourceInput) {
+    if (inputName._saving) return;
+    clearTimeout(inputName._saveTimer);
+    inputName._saveTimer = setTimeout(() => doSave(), 150);
+  }
+
+  inputName.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inputDesc ? inputDesc.focus() : doSave(); } });
+  inputName.addEventListener("blur", () => saveWithDelay(inputName));
+  if (inputDesc) {
+    inputDesc.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+    inputDesc.addEventListener("focus", () => { clearTimeout(inputName._saveTimer); });
+    inputDesc.addEventListener("blur", () => saveWithDelay(inputDesc));
+  }
 }
 
 if (document.getElementById("classes-list")) {
   loadClasses();
   document.getElementById("classes-list").addEventListener("click", (e) => {
-    if (e.target.closest("[data-eleve]")) {
-      toast("La modification des élèves se fait par l'onglet Élèves dans le menu.");
+    const h3 = e.target.closest("h3.classe-name");
+    if (!h3) return;
+    if (h3._clickTimer) {
+      clearTimeout(h3._clickTimer);
+      h3._clickTimer = null;
+      return;
     }
-    const h3 = e.target.closest("h3");
-    if (h3) {
-      const parent = h3.parentElement;
-      const ul = parent.querySelector("ul");
+    h3._clickTimer = setTimeout(() => {
+      h3._clickTimer = null;
+      const card = h3.closest("[data-id]");
+      const ul = card.querySelector("ul");
       if (ul) ul.classList.toggle("hidden");
-      const form = parent.querySelector(".classe-form");
+      const form = card.querySelector(".classe-form");
       if (form) form.classList.toggle("hidden");
+    }, 250);
+  });
+  document.getElementById("classes-list").addEventListener("dblclick", (e) => {
+    const h3 = e.target.closest("h3.classe-name");
+    const prof = e.target.closest("p.classe-prof");
+    if (!h3 && !prof) return;
+    if (h3 && h3._clickTimer) {
+      clearTimeout(h3._clickTimer);
+      h3._clickTimer = null;
     }
+    const card = (h3 || prof).closest("[data-id]");
+    renameClasse(card);
   });
 }
 

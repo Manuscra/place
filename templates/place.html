@@ -151,15 +151,31 @@ async function loadProjets(classeId) {
             <h3 class="font-semibold text-gray-900 projet-name">${p.nom}</h3>
             ${p.created_at ? `<p class="text-[10px] text-gray-400 italic">${new Date(p.created_at).toLocaleDateString('fr-FR')}</p>` : ''}
             <div class="flex items-center gap-3">
-                <button onclick="renameProjet(${p.id}, this)" class="text-indigo-500 hover:text-indigo-700 text-sm">Renommer</button>
-                <button onclick="deleteProjet(${p.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+                <button onclick="deleteProjet(${p.id})" class="text-red-500 hover:text-red-700 text-sm leading-none" title="Supprimer ce projet">&#128465;</button>
             </div>
         </div>`).join("") || '<p class="text-gray-400 italic">Aucun projet pour cette classe.</p>';
 
     projetsList.querySelectorAll('.projet-card').forEach(card => {
-        card.addEventListener('dblclick', () => {
+        let clickTimer = null;
+        card.addEventListener('click', () => {
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+                return;
+            }
             const id = parseInt(card.dataset.id);
-            selectProjet(id);
+            clickTimer = setTimeout(() => {
+                clickTimer = null;
+                selectProjet(id);
+            }, 250);
+        });
+        card.addEventListener('dblclick', () => {
+            if (clickTimer) {
+                clearTimeout(clickTimer);
+                clickTimer = null;
+            }
+            const id = parseInt(card.dataset.id);
+            renameProjet(id, card);
         });
     });
 }
