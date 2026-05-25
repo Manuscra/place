@@ -46,7 +46,6 @@
         color: #000;
     }
     .add-group-btn {
-        width: 260px;
         min-height: 120px;
         border: 2px dashed #c0c0c0;
         border-radius: 8px;
@@ -65,6 +64,22 @@
         font-size: 32px;
         color: #a0a0a0;
         user-select: none;
+    }
+    .annotation-input {
+        width: 100%;
+        margin-top: 8px;
+        padding: 6px 8px;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        font-size: 12px;
+        resize: vertical;
+        font-family: inherit;
+        box-sizing: border-box;
+    }
+    .annotation-input:focus {
+        border-color: #6366f1;
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
     }
     .projet-card {
         cursor: pointer;
@@ -99,7 +114,7 @@
 
     <div id="placementZone" style="display:none">
 
-    <div id="groupsContainer" class="flex flex-wrap gap-5"></div>
+    <div id="groupsContainer" class="grid grid-cols-3 gap-5"></div>
 
     <div class="bg-white rounded-lg shadow p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">Élèves non affectés</h3>
@@ -287,7 +302,7 @@ async function loadPlacement(classeId, projetId) {
         const letter = String.fromCharCode(65 + groupCount);
         const eleves = await api('/api/eleves?groupe_id=' + g.id);
         const div = document.createElement('div');
-        div.className = 'bg-white rounded-lg shadow group-box w-[260px] overflow-hidden';
+        div.className = 'bg-white rounded-lg shadow group-box overflow-hidden';
         div.dataset.groupeId = g.id;
         div.innerHTML = `
             <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center gap-3">
@@ -299,6 +314,7 @@ async function loadPlacement(classeId, projetId) {
             </div>
             <div class="p-3">
                 <div class="students-zone"></div>
+                <textarea class="annotation-input" placeholder="Annotation…" rows="2">${(g.annotation || '').replace(/`/g, '&#96;').replace(/</g, '&lt;')}</textarea>
             </div>
         `;
         const zone = div.querySelector('.students-zone');
@@ -321,6 +337,7 @@ async function loadPlacement(classeId, projetId) {
 
     enableDropZones();
     enableRenameGroups();
+    enableAnnotationInputs();
     renderAddButton();
     enableDragStudents();
 
@@ -357,7 +374,7 @@ function addGroup() {
     if (groupCount >= 26) return;
     const letter = String.fromCharCode(65 + groupCount);
     const div = document.createElement('div');
-    div.className = 'bg-white rounded-lg shadow group-box w-[260px] overflow-hidden';
+    div.className = 'bg-white rounded-lg shadow group-box overflow-hidden';
     div.innerHTML = `
         <div class="bg-gradient-to-br from-indigo-500 to-indigo-700 text-white px-4 py-3 flex justify-between items-center gap-3">
             <h3 class="group-title font-semibold text-sm cursor-pointer select-none hover:text-indigo-200">Groupe ${letter}</h3>
@@ -368,6 +385,7 @@ function addGroup() {
         </div>
         <div class="p-3">
             <div class="students-zone"></div>
+            <textarea class="annotation-input" placeholder="Annotation…" rows="2"></textarea>
         </div>
     `;
     container.appendChild(div);
@@ -378,6 +396,7 @@ function addGroup() {
     enableDropZones();
     enableRenameGroups();
     updateCounters();
+    enableAnnotationInputs();
     groupCount++;
     renderAddButton();
 }
@@ -505,6 +524,32 @@ function enableRenameGroups() {
             }
             input.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
             input.addEventListener('blur', save);
+        });
+    });
+}
+
+// --- Annotations ---
+const annotationTimers = new Map();
+
+function enableAnnotationInputs() {
+    document.querySelectorAll('.annotation-input').forEach(textarea => {
+        if (textarea.dataset.bound) return;
+        textarea.dataset.bound = '1';
+        textarea.addEventListener('input', () => {
+            const box = textarea.closest('.group-box');
+            const groupeId = box?.dataset.groupeId;
+            if (!groupeId) return;
+            if (annotationTimers.has(groupeId)) clearTimeout(annotationTimers.get(groupeId));
+            annotationTimers.set(groupeId, setTimeout(async () => {
+                annotationTimers.delete(groupeId);
+                try {
+                    await fetch(API_BASE + '/api/groupes/' + groupeId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ annotation: textarea.value })
+                    });
+                } catch (e) { /* ignore */ }
+            }, 500));
         });
     });
 }

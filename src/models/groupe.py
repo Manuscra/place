@@ -9,6 +9,7 @@ class Groupe(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(100), nullable=False)
     projet_id = db.Column(db.Integer, db.ForeignKey("projets.id"), nullable=False)
+    annotation = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     projet = db.relationship("Projet", back_populates="groupes")
@@ -19,5 +20,6 @@ class Groupe(db.Model):
             "id": self.id,
             "nom": self.nom,
             "projet_id": self.projet_id,
+            "annotation": self.annotation or "",
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
