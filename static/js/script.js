@@ -38,6 +38,47 @@ if (document.getElementById("create-classe")) {
   });
 }
 
+if (document.getElementById("reset-db")) {
+  document.getElementById("reset-db").addEventListener("click", async () => {
+    if (!confirm("Vider complètement la base de données ? Cette action est irréversible.")) return;
+    try {
+      await api("/api/reset", { method: "POST" });
+      toast("Base de données vidée.");
+      loadClasses();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+if (document.getElementById("import-csv")) {
+  document.getElementById("import-csv").addEventListener("click", () => {
+    document.getElementById("csv-file").click();
+  });
+  document.getElementById("csv-file").addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (!confirm(`Importer le fichier "${file.name}" ?`)) {
+      e.target.value = "";
+      return;
+    }
+    const btn = document.getElementById("import-csv");
+    btn.disabled = true;
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = `<svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg> Importation...`;
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(API_BASE + "/api/import-csv", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      toast(data.message || "Import réussi !");
+      loadClasses();
+    } catch (err) { toast(err.message, "error"); }
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+    e.target.value = "";
+  });
+}
+
 async function loadClasses() {
   const classes = await api("/api/classes");
   const list = document.getElementById("classes-list");

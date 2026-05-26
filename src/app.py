@@ -5,29 +5,16 @@ import os
 import sqlite3
 import sys
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 from pydantic import ValidationError
 
 from .config import Config, ProdConfig, TestConfig
 from .database import db
-from .models import Classe
+from .models import Classe, Eleve, EleveGroupe, Groupe, Projet
 from .place import place_bp
 from .routes import register_all
 
 logger = logging.getLogger(__name__)
-
-
-def _seed_default_classes():
-    if Classe.query.count() == 0:
-        default_classes = [
-            "6A", "6B", "6C",
-            "5A", "5B", "5C",
-            "4A", "4B", "4C",
-            "3A", "3B", "3C",
-        ]
-        for nom in default_classes:
-            db.session.add(Classe(nom=nom))
-        db.session.commit()
 
 
 def _needs_stamp(db_uri: str) -> bool:
@@ -111,10 +98,7 @@ def create_app(testing=False, run_migrations=True):
                 _run_migrations(app, _here)
             except Exception:
                 logger.exception("Failed to run migrations — continuing anyway")
-            try:
-                _seed_default_classes()
-            except Exception:
-                logger.exception("Failed to seed default classes")
+
         elif testing:
             db.create_all()
 
@@ -124,6 +108,113 @@ def create_app(testing=False, run_migrations=True):
 
     register_all(app)
     app.register_blueprint(place_bp)
+
+    @app.route("/api/reset", methods=["POST"])
+    def reset_db():
+        EleveGroupe.query.delete()
+        db.session.query(Eleve).delete()
+        db.session.query(Groupe).delete()
+        db.session.query(Projet).delete()
+        db.session.query(Classe).delete()
+        db.session.commit()
+        return jsonify({"message": "Database reset"}), 200
+
+    @app.route("/api/import-csv", methods=["POST"])
+    def import_csv():
+        import csv
+        import io
+
+        try:
+            import chardet
+        except ImportError:
+            chardet = None
+
+        file = request.files.get("file")
+        if not file:
+            return jsonify({"error": "Aucun fichier fourni"}), 400
+        if not file.filename.lower().endswith(".csv"):
+            return jsonify({"error": "Le fichier doit être un .csv"}), 400
+
+        raw = file.read()
+        if not raw:
+            return jsonify({"error": "Fichier vide"}), 400
+
+        # Détection de l'encodage
+        if chardet:
+            detected = chardet.detect(raw)
+            encoding = detected.get("encoding") if detected and detected.get("confidence", 0) > 0.5 else "utf-8"
+        else:
+            encoding = "utf-8"
+
+        # Décodage avec fallback
+        try:
+            text = raw.decode(encoding)
+        except (UnicodeDecodeError, LookupError):
+            try:
+                text = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                text = raw.decode("latin-1")
+
+        # Détection du délimiteur (tab ou virgule)
+        sample = text[:4096]
+        try:
+            dialect = csv.Sniffer().sniff(sample, delimiters="\t,;")
+        except csv.Error:
+            dialect = csv.excel
+
+        reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+        rows = list(reader)
+        if not rows:
+            return jsonify({"error": "Aucune ligne de données trouvée"}), 400
+
+        # Mapping attendu
+        header_mapping = {
+            "NOM_DE_FAMILLE": "eleve_nom",
+            "PRENOM": "eleve_prenom",
+            "CODE_STRUCTURE": "classe_nom",
+        }
+
+        # Normaliser les en-têtes (strip + uppercase)
+        fieldnames = [name.strip().upper() for name in reader.fieldnames]
+        if not all(k in fieldnames for k in header_mapping):
+            return jsonify({"error": f"En-têtes attendues : {', '.join(header_mapping.keys())}. Reçu : {', '.join(fieldnames)}"}), 400
+
+        created_eleves = 0
+        created_classes = 0
+        skipped = 0
+
+        for row in rows:
+            row = {k.strip().upper(): v.strip() for k, v in row.items() if k.strip().upper() in header_mapping}
+            nom = row.get("NOM_DE_FAMILLE", "")
+            prenom = row.get("PRENOM", "")
+            classe_nom = row.get("CODE_STRUCTURE", "")
+
+            if not nom or not prenom or not classe_nom:
+                skipped += 1
+                continue
+
+            # Chercher ou créer la classe
+            classe = Classe.query.filter_by(nom=classe_nom).first()
+            if not classe:
+                classe = Classe(nom=classe_nom)
+                db.session.add(classe)
+                db.session.flush()
+                created_classes += 1
+
+            # Vérifier si l'élève existe déjà (même nom/prénom/classe)
+            existing = Eleve.query.filter_by(nom=nom, prenom=prenom, classe_id=classe.id).first()
+            if existing:
+                skipped += 1
+                continue
+
+            db.session.add(Eleve(nom=nom, prenom=prenom, classe_id=classe.id))
+            created_eleves += 1
+
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Import terminé : {created_eleves} élève(s) créé(s), {created_classes} classe(s) créée(s), {skipped} ligne(s) ignorée(s)."
+        }), 201
 
     @app.route("/")
     def index():
