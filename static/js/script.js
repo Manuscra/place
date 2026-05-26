@@ -259,7 +259,7 @@ if (document.getElementById("classes-list")) {
   document.head.appendChild(style);
   loadClasses();
   document.getElementById("classes-list").addEventListener("click", (e) => {
-    if (e.target.closest("button, input, form, textarea")) return;
+    if (e.target.closest("button, input, form, textarea, label")) return;
     const card = e.target.closest("[data-id]");
     if (!card) return;
     if (card._clickTimer) {
@@ -288,9 +288,9 @@ if (document.getElementById("classes-list")) {
 }
 
 // --- Eleves page ---
-async function loadClassesIntoEleveSelect() {
+async function loadClassesIntoFilterSelect() {
   const classes = await api("/api/classes");
-  const select = document.querySelector("#create-eleve select[name=classe_id]");
+  const select = document.getElementById("filter-classe");
   if (!select) return;
   classes.forEach((c) => {
     const opt = document.createElement("option");
@@ -300,36 +300,81 @@ async function loadClassesIntoEleveSelect() {
   });
 }
 
-if (document.getElementById("create-eleve")) {
-  loadClassesIntoEleveSelect();
-  document.getElementById("create-eleve").addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const form = new FormData(e.target);
-    const data = Object.fromEntries(form);
-    if (!data.classe_id) return toast("Veuillez choisir une classe", "error");
-    data.classe_id = parseInt(data.classe_id);
-    try {
-      await api("/api/eleves", { method: "POST", body: JSON.stringify(data) });
-      e.target.reset();
-      toast("Élève créé !");
-      loadEleves();
-    } catch (err) { toast(err.message, "error"); }
+async function loadElevesIntoFilterSelect() {
+  const eleves = await api("/api/eleves");
+  const select = document.getElementById("filter-eleve");
+  if (!select) return;
+  eleves.sort((a, b) => (a.nom + a.prenom).localeCompare(b.nom + b.prenom, "fr"));
+  eleves.forEach((e) => {
+    const opt = document.createElement("option");
+    opt.value = e.id;
+    opt.textContent = `${e.nom} ${e.prenom}`;
+    select.appendChild(opt);
   });
 }
 
-async function loadEleves() {
+async function loadPrenomsIntoFilterSelect() {
+  const select = document.getElementById("filter-prenom");
+  if (!select) return;
   const eleves = await api("/api/eleves");
-  const list = document.getElementById("eleves-list");
-  list.innerHTML = eleves.map((e) => `
+  const prenoms = [...new Set(eleves.map(e => e.prenom))].sort((a, b) => a.localeCompare(b, "fr"));
+  prenoms.forEach((p) => {
+    const opt = document.createElement("option");
+    opt.value = p;
+    opt.textContent = p;
+    select.appendChild(opt);
+  });
+}
+
+function getActiveFilters() {
+  const classeId = parseInt(document.getElementById("filter-classe")?.value) || null;
+  const eleveId = parseInt(document.getElementById("filter-eleve")?.value) || null;
+  const prenom = document.getElementById("filter-prenom")?.value || null;
+  return { classeId, eleveId, prenom };
+}
+
+function renderEleveCard(e) {
+  return `
     <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
       <div>
         <h3 class="font-semibold text-gray-900">${e.prenom} ${e.nom}</h3>
-        <p class="text-sm text-gray-500">
-          Classe #${e.classe_id}
-        </p>
+        <p class="text-sm text-gray-500">Classe #${e.classe_id}</p>
       </div>
       <button onclick="deleteEleve(${e.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
-    </div>`).join("");
+    </div>`;
+}
+
+async function loadFilteredEleves() {
+  const { classeId, eleveId, prenom } = getActiveFilters();
+  const list = document.getElementById("eleves-list");
+  if (eleveId) {
+    try {
+      const e = await api(`/api/eleves/${eleveId}`);
+      list.innerHTML = renderEleveCard(e);
+    } catch (err) {
+      list.innerHTML = `<p class="text-red-400 italic">Élève introuvable.</p>`;
+    }
+    return;
+  }
+  const url = classeId ? `/api/eleves?classe_id=${classeId}` : "/api/eleves";
+  let eleves = await api(url);
+  if (prenom) {
+    eleves = eleves.filter(e => e.prenom === prenom);
+  }
+  if (!eleves.length) {
+    list.innerHTML = `<p class="text-gray-400 italic">Aucun élève trouvé.</p>`;
+    return;
+  }
+  list.innerHTML = eleves.map(renderEleveCard).join("");
+}
+
+if (document.getElementById("eleves-list")) {
+  loadClassesIntoFilterSelect();
+  loadElevesIntoFilterSelect();
+  loadPrenomsIntoFilterSelect();
+  ["filter-classe", "filter-eleve", "filter-prenom"].forEach((id) => {
+    document.getElementById(id).addEventListener("change", loadFilteredEleves);
+  });
 }
 
 async function deleteEleve(id) {
@@ -337,8 +382,6 @@ async function deleteEleve(id) {
   try {
     await api(`/api/eleves/${id}`, { method: "DELETE" });
     toast("Élève supprimé.");
-    loadEleves();
+    loadFilteredEleves();
   } catch (err) { toast(err.message, "error"); }
 }
-
-if (document.getElementById("eleves-list")) loadEleves();

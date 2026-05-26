@@ -3,19 +3,16 @@
 {% block page_title %}Élèves{% endblock %}
 {% block content %}
 
-<div class="bg-white rounded-lg shadow p-6 mb-8">
-    <form id="create-eleve" class="flex items-center gap-4">
-        <select name="classe_id" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-            <option value="">-- Choisir une classe --</option>
-        </select>
-        <input type="text" name="nom" placeholder="Nom" required
-               class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-        <input type="text" name="prenom" placeholder="Prénom" required
-               class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-        <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition w-fit">
-            Créer
-        </button>
-    </form>
+<div class="bg-white rounded-lg shadow p-6 mb-8 flex items-center gap-4">
+    <select id="filter-classe" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <option value="">-- Choisir une classe --</option>
+    </select>
+    <select id="filter-eleve" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <option value="">-- Choisir un élève --</option>
+    </select>
+    <select id="filter-prenom" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <option value="">-- Choisir un prénom --</option>
+    </select>
 </div>
 
 <div id="eleves-list" class="grid gap-4"></div>
