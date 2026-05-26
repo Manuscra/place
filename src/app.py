@@ -228,14 +228,6 @@ def create_app(testing=False, run_migrations=True):
     def classes_page():
         return render_template("classes.html")
 
-    @app.route("/projets")
-    def projets_page():
-        return render_template("projets.html")
-
-    @app.route("/groupes")
-    def groupes_page():
-        return render_template("groupes.html")
-
     @app.route("/eleves")
     def eleves_page():
         return render_template("eleves.html")
