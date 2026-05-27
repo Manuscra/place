@@ -218,11 +218,11 @@ def create_app(testing=False, run_migrations=True):
 
     @app.route("/")
     def index():
-        return render_template("place.html")
-
-    @app.route("/dashboard")
-    def dashboard():
         return render_template("index.html")
+
+    @app.route("/place")
+    def dashboard():
+        return render_template("place.html")
 
     @app.route("/classes")
     def classes_page():

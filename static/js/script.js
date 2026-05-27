@@ -288,11 +288,14 @@ if (document.getElementById("classes-list")) {
 }
 
 // --- Eleves page ---
+let allClasses = [];
+
 async function loadClassesIntoFilterSelect() {
   const classes = await api("/api/classes");
+  allClasses = classes.sort((a, b) => a.nom.localeCompare(b.nom, "fr"));
   const select = document.getElementById("filter-classe");
   if (!select) return;
-  classes.forEach((c) => {
+  allClasses.forEach((c) => {
     const opt = document.createElement("option");
     opt.value = c.id;
     opt.textContent = c.nom;
@@ -335,11 +338,11 @@ function getActiveFilters() {
 
 function renderEleveCard(e) {
   return `
-    <div class="eleve-card" data-id="${e.id}">
+    <div class="eleve-card" data-id="${e.id}" data-classe-id="${e.classe_id}">
       <div class="flex justify-between items-start">
         <div>
           <h3 class="font-semibold text-gray-900">${e.prenom} ${e.nom}</h3>
-          <p class="text-sm text-gray-500">${e.classe_nom || "Sans classe"}</p>
+          <p class="text-sm text-gray-500 eleve-classe">${e.classe_nom || "Sans classe"}</p>
         </div>
         <div class="flex items-center gap-3">
           <label class="present-toggle${e.present !== false ? ' on' : ''}" title="${e.present !== false ? 'Inscrit' : 'Désinscrit'}"><input type="checkbox" onchange="togglePresent(${e.id}, this)"${e.present !== false ? ' checked' : ''}></label>
@@ -352,11 +355,14 @@ function renderEleveCard(e) {
 
 async function renameEleve(card) {
   const id = parseInt(card.dataset.id);
+  const currentClasseId = parseInt(card.dataset.classeId);
   const h3 = card.querySelector("h3");
   const currentText = h3.textContent.trim();
   const parts = currentText.split(" ");
   const currentPrenom = parts.slice(0, -1).join(" ") || "";
   const currentNom = parts[parts.length - 1] || "";
+  const pClasse = card.querySelector(".eleve-classe");
+  const currentClasseNom = pClasse ? pClasse.textContent.trim() : "";
 
   const wrapper = document.createElement("div");
   wrapper.className = "flex items-center gap-2";
@@ -365,17 +371,31 @@ async function renameEleve(card) {
   inputPrenom.type = "text";
   inputPrenom.value = currentPrenom;
   inputPrenom.placeholder = "Prénom";
-  inputPrenom.className = "border rounded px-2 py-1 text-sm w-28 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
+  inputPrenom.className = "border rounded px-2 py-1 text-sm w-56 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
 
   const inputNom = document.createElement("input");
   inputNom.type = "text";
   inputNom.value = currentNom;
   inputNom.placeholder = "Nom";
-  inputNom.className = "border rounded px-2 py-1 text-sm w-28 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
+  inputNom.className = "border rounded px-2 py-1 text-sm w-56 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
 
   wrapper.appendChild(inputPrenom);
   wrapper.appendChild(inputNom);
   h3.replaceWith(wrapper);
+
+  let selectClasse = null;
+  if (pClasse) {
+    selectClasse = document.createElement("select");
+    selectClasse.className = "border rounded px-2 py-1 text-xs text-gray-500 w-44 mt-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500";
+    allClasses.forEach((c) => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.nom;
+      if (c.id === currentClasseId) opt.selected = true;
+      selectClasse.appendChild(opt);
+    });
+    pClasse.replaceWith(selectClasse);
+  }
 
   inputPrenom.focus();
   inputPrenom.select();
@@ -385,20 +405,41 @@ async function renameEleve(card) {
     wrapper._saving = true;
     const valPrenom = inputPrenom.value.trim() || currentPrenom;
     const valNom = inputNom.value.trim() || currentNom;
+    const valClasseId = selectClasse ? parseInt(selectClasse.value) : currentClasseId;
+    const valClasseNom = selectClasse ? selectClasse.selectedOptions[0].textContent : currentClasseNom;
 
     const newH3 = document.createElement("h3");
     newH3.className = "font-semibold text-gray-900";
     newH3.textContent = `${valPrenom} ${valNom}`;
     wrapper.replaceWith(newH3);
 
-    if (valPrenom !== currentPrenom || valNom !== currentNom) {
+    if (selectClasse) {
+      const newP = document.createElement("p");
+      newP.className = "text-sm text-gray-500 eleve-classe";
+      newP.textContent = valClasseNom || "Sans classe";
+      selectClasse.replaceWith(newP);
+    }
+
+    const body = {};
+    if (valPrenom !== currentPrenom) body.prenom = valPrenom;
+    if (valNom !== currentNom) body.nom = valNom;
+    if (valClasseId !== currentClasseId) body.classe_id = valClasseId;
+
+    if (Object.keys(body).length) {
       try {
         await api(`/api/eleves/${id}`, {
           method: "PUT",
-          body: JSON.stringify({ prenom: valPrenom, nom: valNom })
+          body: JSON.stringify(body)
         });
+        if (valClasseId !== currentClasseId) card.dataset.classeId = valClasseId;
       } catch (err) {
         newH3.textContent = currentText;
+        if (selectClasse) {
+          const revertP = document.createElement("p");
+          revertP.className = "text-sm text-gray-500 eleve-classe";
+          revertP.textContent = currentClasseNom;
+          newH3.parentElement.querySelector(".eleve-classe")?.replaceWith(revertP);
+        }
         toast(err.message, "error");
       }
     }
@@ -412,9 +453,14 @@ async function renameEleve(card) {
 
   inputPrenom.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inputNom.focus(); } });
   inputPrenom.addEventListener("blur", () => saveWithDelay(inputPrenom));
-  inputNom.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+  inputNom.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); selectClasse ? selectClasse.focus() : doSave(); } });
   inputNom.addEventListener("focus", () => { clearTimeout(wrapper._saveTimer); });
   inputNom.addEventListener("blur", () => saveWithDelay(inputNom));
+  if (selectClasse) {
+    selectClasse.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+    selectClasse.addEventListener("focus", () => { clearTimeout(wrapper._saveTimer); });
+    selectClasse.addEventListener("blur", () => saveWithDelay(selectClasse));
+  }
 }
 
 async function loadFilteredEleves() {
