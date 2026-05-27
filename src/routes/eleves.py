@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from sqlalchemy.orm import joinedload
 
 from ..database import db
 from ..models import Eleve, EleveGroupe, Groupe
@@ -13,7 +14,7 @@ def list_eleves():
     groupe_id = request.args.get("groupe_id", type=int)
     projet_id = request.args.get("projet_id", type=int)
     present = request.args.get("present")
-    query = Eleve.query.order_by(Eleve.nom, Eleve.prenom)
+    query = Eleve.query.options(joinedload(Eleve.classe)).order_by(Eleve.nom, Eleve.prenom)
     if classe_id is not None:
         query = query.filter_by(classe_id=classe_id)
     if present is not None:

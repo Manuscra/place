@@ -11,10 +11,15 @@ class Eleve(db.Model):
     prenom = db.Column(db.String(100), nullable=False)
     classe_id = db.Column(db.Integer, db.ForeignKey("classes.id"), nullable=False)
     present = db.Column(db.Boolean, default=True, nullable=False)
+    annotation = db.Column(db.Text, default="")
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     classe = db.relationship("Classe", backref="eleves")
     groupes = db.relationship("Groupe", secondary="eleve_groupes", back_populates="eleves", lazy="selectin")
+
+    @property
+    def classe_nom(self):
+        return self.classe.nom if self.classe else None
 
     def to_dict(self):
         return {
@@ -22,6 +27,8 @@ class Eleve(db.Model):
             "nom": self.nom,
             "prenom": self.prenom,
             "classe_id": self.classe_id,
+            "classe_nom": self.classe_nom,
             "present": self.present,
+            "annotation": self.annotation or "",
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }

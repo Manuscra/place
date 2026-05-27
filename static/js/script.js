@@ -89,7 +89,7 @@ async function loadClasses() {
       if (eleves.length) {
         elevesHtml = `
           <ul class="mt-3 border-t pt-3 text-sm text-gray-500 space-y-1 ml-8 hidden">
-            ${eleves.map((e) => `<li class="flex justify-between items-center" data-name="${e.nom} ${e.prenom}"><span>${e.nom} ${e.prenom}</span><div class="flex items-center gap-3"><label class="present-toggle${e.present !== false ? ' on' : ''}" title="${e.present !== false ? 'Présent' : 'Absent'}"><input type="checkbox" onchange="togglePresent(${e.id}, this)"${e.present !== false ? ' checked' : ''}></label> <button onclick="event.stopPropagation(); deleteClasseEleve(${e.id}, this)" class="text-indigo-400 hover:text-indigo-600 text-[10px] leading-none" title="Supprimer">&#128465;</button></div></li>`).join("")}
+            ${eleves.map((e) => `<li class="flex justify-between items-center" data-name="${e.nom} ${e.prenom}"><span>${e.nom} ${e.prenom}</span><div class="flex items-center gap-3"><label class="present-toggle${e.present !== false ? ' on' : ''}" title="${e.present !== false ? 'Inscrit' : 'Désinscrit'}"><input type="checkbox" onchange="togglePresent(${e.id}, this)"${e.present !== false ? ' checked' : ''}></label> <button onclick="event.stopPropagation(); deleteClasseEleve(${e.id}, this)" class="text-indigo-400 hover:text-indigo-600 text-[10px] leading-none" title="Supprimer">&#128465;</button></div></li>`).join("")}
           </ul>`;
       }
     } catch (e) { /* ignore */ }
@@ -145,7 +145,7 @@ async function addEleveToClasse(classeId, form) {
     const li = document.createElement("li");
     li.className = "flex justify-between items-center";
     li.dataset.name = `${created.nom} ${created.prenom}`;
-    li.innerHTML = `<span>${created.nom} ${created.prenom}</span><div class="flex items-center gap-3"><label class="present-toggle on" title="Présent"><input type="checkbox" checked onchange="togglePresent(${created.id}, this)"></label> <button onclick="event.stopPropagation(); deleteClasseEleve(${created.id}, this)" class="text-indigo-400 hover:text-indigo-600 text-[10px] leading-none" title="Supprimer">&#128465;</button></div>`;
+    li.innerHTML = `<span>${created.nom} ${created.prenom}</span><div class="flex items-center gap-3"><label class="present-toggle on" title="Inscrit"><input type="checkbox" checked onchange="togglePresent(${created.id}, this)"></label> <button onclick="event.stopPropagation(); deleteClasseEleve(${created.id}, this)" class="text-indigo-400 hover:text-indigo-600 text-[10px] leading-none" title="Supprimer">&#128465;</button></div>`;
     ul.appendChild(li);
     [...ul.children].sort((a, b) => (a.dataset.name || a.textContent).localeCompare(b.dataset.name || b.textContent, "fr")).forEach(el => ul.appendChild(el));
   } catch (err) { toast(err.message, "error"); }
@@ -164,13 +164,13 @@ async function togglePresent(id, checkbox) {
   const label = checkbox.closest("label");
   const present = checkbox.checked;
   label.classList.toggle("on", present);
-  label.title = present ? "Présent" : "Absent";
+  label.title = present ? "Inscrit" : "Désinscrit";
   try {
     await api(`/api/eleves/${id}`, { method: "PUT", body: JSON.stringify({ present }) });
   } catch (err) {
     checkbox.checked = !present;
     label.classList.toggle("on", !present);
-    label.title = !present ? "Présent" : "Absent";
+    label.title = !present ? "Inscrit" : "Désinscrit";
     toast(err.message, "error");
   }
 }
@@ -335,13 +335,86 @@ function getActiveFilters() {
 
 function renderEleveCard(e) {
   return `
-    <div class="bg-white rounded-lg shadow p-4 flex justify-between items-center">
-      <div>
-        <h3 class="font-semibold text-gray-900">${e.prenom} ${e.nom}</h3>
-        <p class="text-sm text-gray-500">Classe #${e.classe_id}</p>
+    <div class="eleve-card" data-id="${e.id}">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-semibold text-gray-900">${e.prenom} ${e.nom}</h3>
+          <p class="text-sm text-gray-500">${e.classe_nom || "Sans classe"}</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <label class="present-toggle${e.present !== false ? ' on' : ''}" title="${e.present !== false ? 'Inscrit' : 'Désinscrit'}"><input type="checkbox" onchange="togglePresent(${e.id}, this)"${e.present !== false ? ' checked' : ''}></label>
+          <button onclick="deleteEleve(${e.id})" class="text-indigo-400 hover:text-indigo-600 text-sm" title="Supprimer">&#128465;</button>
+        </div>
       </div>
-      <button onclick="deleteEleve(${e.id})" class="text-red-500 hover:text-red-700 text-sm">Supprimer</button>
+      <textarea class="annotation-input hidden" placeholder="Annotation…" rows="2">${(e.annotation || "").replace(/`/g, "&#96;").replace(/</g, "&lt;")}</textarea>
     </div>`;
+}
+
+async function renameEleve(card) {
+  const id = parseInt(card.dataset.id);
+  const h3 = card.querySelector("h3");
+  const currentText = h3.textContent.trim();
+  const parts = currentText.split(" ");
+  const currentPrenom = parts.slice(0, -1).join(" ") || "";
+  const currentNom = parts[parts.length - 1] || "";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "flex items-center gap-2";
+
+  const inputPrenom = document.createElement("input");
+  inputPrenom.type = "text";
+  inputPrenom.value = currentPrenom;
+  inputPrenom.placeholder = "Prénom";
+  inputPrenom.className = "border rounded px-2 py-1 text-sm w-28 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
+
+  const inputNom = document.createElement("input");
+  inputNom.type = "text";
+  inputNom.value = currentNom;
+  inputNom.placeholder = "Nom";
+  inputNom.className = "border rounded px-2 py-1 text-sm w-28 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold";
+
+  wrapper.appendChild(inputPrenom);
+  wrapper.appendChild(inputNom);
+  h3.replaceWith(wrapper);
+
+  inputPrenom.focus();
+  inputPrenom.select();
+
+  async function doSave() {
+    if (wrapper._saving) return;
+    wrapper._saving = true;
+    const valPrenom = inputPrenom.value.trim() || currentPrenom;
+    const valNom = inputNom.value.trim() || currentNom;
+
+    const newH3 = document.createElement("h3");
+    newH3.className = "font-semibold text-gray-900";
+    newH3.textContent = `${valPrenom} ${valNom}`;
+    wrapper.replaceWith(newH3);
+
+    if (valPrenom !== currentPrenom || valNom !== currentNom) {
+      try {
+        await api(`/api/eleves/${id}`, {
+          method: "PUT",
+          body: JSON.stringify({ prenom: valPrenom, nom: valNom })
+        });
+      } catch (err) {
+        newH3.textContent = currentText;
+        toast(err.message, "error");
+      }
+    }
+  }
+
+  function saveWithDelay(sourceInput) {
+    if (wrapper._saving) return;
+    clearTimeout(wrapper._saveTimer);
+    wrapper._saveTimer = setTimeout(() => doSave(), 150);
+  }
+
+  inputPrenom.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); inputNom.focus(); } });
+  inputPrenom.addEventListener("blur", () => saveWithDelay(inputPrenom));
+  inputNom.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+  inputNom.addEventListener("focus", () => { clearTimeout(wrapper._saveTimer); });
+  inputNom.addEventListener("blur", () => saveWithDelay(inputNom));
 }
 
 async function loadFilteredEleves() {
@@ -351,6 +424,7 @@ async function loadFilteredEleves() {
     try {
       const e = await api(`/api/eleves/${eleveId}`);
       list.innerHTML = renderEleveCard(e);
+      enableEleveAnnotationInputs();
     } catch (err) {
       list.innerHTML = `<p class="text-red-400 italic">Élève introuvable.</p>`;
     }
@@ -366,14 +440,78 @@ async function loadFilteredEleves() {
     return;
   }
   list.innerHTML = eleves.map(renderEleveCard).join("");
+  enableEleveAnnotationInputs();
 }
 
 if (document.getElementById("eleves-list")) {
+  const style = document.createElement("style");
+  style.textContent = `.present-toggle{position:relative;display:inline-flex;align-items:center;cursor:pointer;width:22px;height:12px;background:#d1d5db;border-radius:999px;transition:background .2s}.present-toggle input{position:absolute;opacity:0;width:0;height:0}.present-toggle.on{background:#6366f1}.present-toggle::after{content:'';position:absolute;top:1px;left:1px;width:10px;height:10px;border-radius:50%;background:#fff;transition:transform .2s;box-shadow:0 1px 2px rgba(0,0,0,.15)}.present-toggle.on::after{transform:translateX(10px)}`;
+  document.head.appendChild(style);
   loadClassesIntoFilterSelect();
   loadElevesIntoFilterSelect();
   loadPrenomsIntoFilterSelect();
-  ["filter-classe", "filter-eleve", "filter-prenom"].forEach((id) => {
-    document.getElementById(id).addEventListener("change", loadFilteredEleves);
+  document.getElementById("filter-classe").addEventListener("change", () => {
+    document.getElementById("filter-eleve").value = "";
+    document.getElementById("filter-prenom").value = "";
+    loadFilteredEleves();
+  });
+  document.getElementById("filter-eleve").addEventListener("change", () => {
+    document.getElementById("filter-classe").value = "";
+    document.getElementById("filter-prenom").value = "";
+    loadFilteredEleves();
+  });
+  document.getElementById("filter-prenom").addEventListener("change", () => {
+    document.getElementById("filter-classe").value = "";
+    document.getElementById("filter-eleve").value = "";
+    loadFilteredEleves();
+  });
+  document.getElementById("eleves-list").addEventListener("click", (e) => {
+    if (e.target.closest("button, input, form, textarea, label")) return;
+    const card = e.target.closest(".eleve-card");
+    if (!card) return;
+    if (card._clickTimer) {
+      clearTimeout(card._clickTimer);
+      card._clickTimer = null;
+      return;
+    }
+    card._clickTimer = setTimeout(() => {
+      card._clickTimer = null;
+      const ta = card.querySelector(".annotation-input");
+      if (ta) ta.classList.toggle("hidden");
+    }, 250);
+  });
+  document.getElementById("eleves-list").addEventListener("dblclick", (e) => {
+    if (e.target.closest("button, input, form, textarea, label")) return;
+    const card = e.target.closest(".eleve-card");
+    if (!card) return;
+    if (card._clickTimer) {
+      clearTimeout(card._clickTimer);
+      card._clickTimer = null;
+    }
+    renameEleve(card);
+  });
+  enableEleveAnnotationInputs();
+}
+
+async function enableEleveAnnotationInputs() {
+  document.querySelectorAll("#eleves-list .annotation-input").forEach(textarea => {
+    if (textarea.dataset.bound) return;
+    textarea.dataset.bound = "1";
+    let timer;
+    textarea.addEventListener("input", () => {
+      const card = textarea.closest(".eleve-card");
+      const id = card?.dataset.id;
+      if (!id) return;
+      clearTimeout(timer);
+      timer = setTimeout(async () => {
+        try {
+          await api(`/api/eleves/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ annotation: textarea.value })
+          });
+        } catch (e) { /* ignore */ }
+      }, 500);
+    });
   });
 }
 

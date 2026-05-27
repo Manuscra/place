@@ -1,3 +1,15 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .eleve-card {
+    @apply bg-white rounded-lg shadow p-4;
+  }
+  .annotation-input {
+    @apply w-full mt-2 p-1.5 border border-gray-300 rounded text-xs resize-y;
+  }
+  .annotation-input:focus {
+    @apply border-indigo-500 outline-none ring-2 ring-indigo-500/20;
+  }
+}
