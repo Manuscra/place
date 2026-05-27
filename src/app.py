@@ -53,17 +53,22 @@ def _run_migrations(app, _here):
 
 
 class _PrefixMiddleware:
-    """Sets SCRIPT_NAME and strips the APPLICATION_ROOT from PATH_INFO."""
+    """Sets SCRIPT_NAME and strips the APPLICATION_ROOT from PATH_INFO.
+
+    Only active when no upstream WSGI server has already set SCRIPT_NAME.
+    This prevents double-prefixing when behind a reverse proxy (nginx/Apache).
+    """
 
     def __init__(self, wsgi_app, prefix):
         self.app = wsgi_app
         self.prefix = prefix.rstrip("/")
 
     def __call__(self, environ, start_response):
-        environ["SCRIPT_NAME"] = self.prefix
-        path = environ.get("PATH_INFO", "")
-        if path.startswith(self.prefix):
-            environ["PATH_INFO"] = path[len(self.prefix):] or "/"
+        if not environ.get("SCRIPT_NAME"):
+            environ["SCRIPT_NAME"] = self.prefix
+            path = environ.get("PATH_INFO", "")
+            if path.startswith(self.prefix):
+                environ["PATH_INFO"] = path[len(self.prefix):] or "/"
         return self.app(environ, start_response)
 
 
@@ -253,9 +258,9 @@ def create_app(testing=False, run_migrations=True):
     def index():
         return render_template("index.html")
 
-    @app.route("/place")
-    def dashboard():
-        return render_template("place.html")
+    @app.route("/distribution")
+    def distribution_page():
+        return render_template("distribution.html")
 
     @app.route("/classes")
     def classes_page():
