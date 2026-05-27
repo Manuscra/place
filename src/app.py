@@ -123,6 +123,7 @@ def create_app(testing=False, run_migrations=True):
     def import_csv():
         import csv
         import io
+        import xml.etree.ElementTree as ET
 
         try:
             import chardet
@@ -132,38 +133,70 @@ def create_app(testing=False, run_migrations=True):
         file = request.files.get("file")
         if not file:
             return jsonify({"error": "Aucun fichier fourni"}), 400
-        if not file.filename.lower().endswith(".csv"):
+
+        filename = file.filename.lower()
+        if not (filename.endswith(".csv") or filename.endswith(".xml")):
             return jsonify({"error": "Le fichier doit être un .csv"}), 400
 
         raw = file.read()
         if not raw:
             return jsonify({"error": "Fichier vide"}), 400
 
-        # Détection de l'encodage
-        if chardet:
-            detected = chardet.detect(raw)
-            encoding = detected.get("encoding") if detected and detected.get("confidence", 0) > 0.5 else "utf-8"
-        else:
-            encoding = "utf-8"
+        rows = []
 
-        # Décodage avec fallback
-        try:
-            text = raw.decode(encoding)
-        except (UnicodeDecodeError, LookupError):
+        if filename.endswith(".xml"):
             try:
-                text = raw.decode("utf-8")
-            except UnicodeDecodeError:
-                text = raw.decode("latin-1")
+                root = ET.fromstring(raw)
+            except ET.ParseError as e:
+                return jsonify({"error": f"Fichier XML invalide : {e}"}), 400
 
-        # Détection du délimiteur (tab ou virgule)
-        sample = text[:4096]
-        try:
-            dialect = csv.Sniffer().sniff(sample, delimiters="\t,;")
-        except csv.Error:
-            dialect = csv.excel
+            structures_map = {}
+            for struct_eleve in root.findall(".//STRUCTURES/STRUCTURES_ELEVE"):
+                eleve_id = struct_eleve.get("ELEVE_ID")
+                codes = []
+                for structure in struct_eleve.findall("./STRUCTURE"):
+                    code = structure.findtext("CODE_STRUCTURE", default="")
+                    if code:
+                        codes.append(code)
+                structures_map[eleve_id] = ";".join(codes)
 
-        reader = csv.DictReader(io.StringIO(text), dialect=dialect)
-        rows = list(reader)
+            for eleve in root.findall(".//ELEVES/ELEVE"):
+                eleve_id = eleve.get("ELEVE_ID", "")
+                nom = eleve.findtext("NOM_DE_FAMILLE", default="").strip()
+                prenom = eleve.findtext("PRENOM", default="").strip()
+                code_structure = structures_map.get(eleve_id, "")
+                rows.append({
+                    "NOM_DE_FAMILLE": nom,
+                    "PRENOM": prenom,
+                    "CODE_STRUCTURE": code_structure,
+                })
+        else:
+            # Détection de l'encodage
+            if chardet:
+                detected = chardet.detect(raw)
+                encoding = detected.get("encoding") if detected and detected.get("confidence", 0) > 0.5 else "utf-8"
+            else:
+                encoding = "utf-8"
+
+            # Décodage avec fallback
+            try:
+                text = raw.decode(encoding)
+            except (UnicodeDecodeError, LookupError):
+                try:
+                    text = raw.decode("utf-8")
+                except UnicodeDecodeError:
+                    text = raw.decode("latin-1")
+
+            # Détection du délimiteur (tab ou virgule)
+            sample = text[:4096]
+            try:
+                dialect = csv.Sniffer().sniff(sample, delimiters="\t,;")
+            except csv.Error:
+                dialect = csv.excel
+
+            reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+            rows = list(reader)
+
         if not rows:
             return jsonify({"error": "Aucune ligne de données trouvée"}), 400
 
@@ -175,7 +208,7 @@ def create_app(testing=False, run_migrations=True):
         }
 
         # Normaliser les en-têtes (strip + uppercase)
-        fieldnames = [name.strip().upper() for name in reader.fieldnames]
+        fieldnames = [name.strip().upper() for name in rows[0].keys()]
         if not all(k in fieldnames for k in header_mapping):
             return jsonify({"error": f"En-têtes attendues : {', '.join(header_mapping.keys())}. Reçu : {', '.join(fieldnames)}"}), 400
 
