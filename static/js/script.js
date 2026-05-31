@@ -349,7 +349,14 @@ function renderEleveCard(e) {
           <button onclick="deleteEleve(${e.id})" class="text-indigo-400 hover:text-indigo-600 text-sm" title="Supprimer">&#128465;</button>
         </div>
       </div>
-      <textarea class="annotation-input hidden" placeholder="Annotation…" rows="2">${(e.annotation || "").replace(/`/g, "&#96;").replace(/</g, "&lt;")}</textarea>
+      <div class="annotations-container hidden mt-3 border-t pt-3">
+        <div class="annotations-list space-y-2 mb-3"></div>
+        <form class="annotation-form flex gap-2" onsubmit="event.preventDefault(); addEleveAnnotation(${e.id}, this)">
+          <textarea name="texte" placeholder="Nouvelle annotation…" rows="2" required
+                   class="annotation-new-input border rounded px-2 py-1 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 resize-none"></textarea>
+          <button type="submit" class="bg-indigo-600 text-white text-sm rounded px-3 py-1 hover:bg-indigo-700 transition self-end">Ajouter</button>
+        </form>
+      </div>
     </div>`;
 }
 
@@ -470,7 +477,6 @@ async function loadFilteredEleves() {
     try {
       const e = await api(`/api/eleves/${eleveId}`);
       list.innerHTML = renderEleveCard(e);
-      enableEleveAnnotationInputs();
     } catch (err) {
       list.innerHTML = `<p class="text-red-400 italic">Élève introuvable.</p>`;
     }
@@ -486,7 +492,6 @@ async function loadFilteredEleves() {
     return;
   }
   list.innerHTML = eleves.map(renderEleveCard).join("");
-  enableEleveAnnotationInputs();
 }
 
 if (document.getElementById("eleves-list")) {
@@ -522,8 +527,11 @@ if (document.getElementById("eleves-list")) {
     }
     card._clickTimer = setTimeout(() => {
       card._clickTimer = null;
-      const ta = card.querySelector(".annotation-input");
-      if (ta) ta.classList.toggle("hidden");
+      const container = card.querySelector(".annotations-container");
+      if (container) {
+        const isHidden = container.classList.toggle("hidden");
+        if (!isHidden) loadEleveAnnotations(card);
+      }
     }, 250);
   });
   document.getElementById("eleves-list").addEventListener("dblclick", (e) => {
@@ -536,29 +544,60 @@ if (document.getElementById("eleves-list")) {
     }
     renameEleve(card);
   });
-  enableEleveAnnotationInputs();
 }
 
-async function enableEleveAnnotationInputs() {
-  document.querySelectorAll("#eleves-list .annotation-input").forEach(textarea => {
-    if (textarea.dataset.bound) return;
-    textarea.dataset.bound = "1";
-    let timer;
-    textarea.addEventListener("input", () => {
-      const card = textarea.closest(".eleve-card");
-      const id = card?.dataset.id;
-      if (!id) return;
-      clearTimeout(timer);
-      timer = setTimeout(async () => {
-        try {
-          await api(`/api/eleves/${id}`, {
-            method: "PUT",
-            body: JSON.stringify({ annotation: textarea.value })
-          });
-        } catch (e) { /* ignore */ }
-      }, 500);
+async function loadEleveAnnotations(card) {
+  const eleveId = card.dataset.id;
+  const list = card.querySelector(".annotations-list");
+  try {
+    const annotations = await api(`/api/annotations?eleve_id=${eleveId}`);
+    list.innerHTML = annotations.length
+      ? annotations.map(a => {
+          const groupeBadge = a.groupe_nom
+            ? `<span class="text-xs text-gray-400"> - ${a.groupe_nom.replace(/</g, "&lt;")}</span>`
+            : "";
+          return `
+        <div class="annotation-entry flex justify-between items-start gap-2 text-sm">
+          <div>
+            <span class="text-xs text-gray-400">${new Date(a.date_saisie).toLocaleDateString("fr-FR")}</span>
+            ${groupeBadge}
+            <p class="text-gray-700 whitespace-pre-wrap">${a.texte.replace(/</g, "&lt;")}</p>
+          </div>
+          <button onclick="deleteAnnotation(${a.id}, this)" class="text-red-400 hover:text-red-600 text-xs leading-none shrink-0" title="Supprimer">&#128465;</button>
+        </div>`;
+        }).join("")
+      : '<p class="text-gray-400 italic text-sm">Aucune annotation.</p>';
+  } catch (e) { /* ignore */ }
+}
+
+async function addEleveAnnotation(eleveId, form) {
+  const texte = form.querySelector("textarea").value.trim();
+  if (!texte) return;
+  try {
+    await api("/api/annotations", {
+      method: "POST",
+      body: JSON.stringify({ eleve_id: eleveId, texte })
     });
-  });
+    form.reset();
+    form.querySelector("textarea").focus();
+    const card = form.closest(".eleve-card");
+    if (card) await loadEleveAnnotations(card);
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function deleteAnnotation(id, btn) {
+  if (!confirm("Supprimer cette annotation ?")) return;
+  try {
+    await api(`/api/annotations/${id}`, { method: "DELETE" });
+    const entry = btn.closest(".annotation-entry");
+    if (entry) {
+      const list = entry.parentElement;
+      entry.remove();
+      if (!list.querySelector(".annotation-entry")) {
+        list.innerHTML = '<p class="text-gray-400 italic text-sm">Aucune annotation.</p>';
+      }
+    }
+  } catch (err) { toast(err.message, "error"); }
 }
 
 async function deleteEleve(id) {

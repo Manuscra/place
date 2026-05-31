@@ -315,7 +315,14 @@ async function loadPlacement(classeId, projetId) {
             </div>
             <div class="p-3">
                 <div class="students-zone"></div>
-                <textarea class="annotation-input hidden" placeholder="Annotation…" rows="2">${(g.annotation || '').replace(/`/g, '&#96;').replace(/</g, '&lt;')}</textarea>
+                <div class="annotations-container hidden mt-3 border-t pt-3 border-gray-200">
+                    <div class="annotations-list space-y-2 mb-3"></div>
+                    <form class="annotation-form flex gap-2" onsubmit="event.preventDefault(); addGroupeAnnotation(this)">
+                        <textarea name="texte" placeholder="Nouvelle annotation…" rows="2" required
+                                 class="annotation-new-input border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 resize-none"></textarea>
+                        <button type="submit" class="bg-indigo-600 text-white text-xs rounded px-2 py-1 hover:bg-indigo-700 transition self-end">Ajouter</button>
+                    </form>
+                </div>
             </div>
         `;
         const zone = div.querySelector('.students-zone');
@@ -338,7 +345,6 @@ async function loadPlacement(classeId, projetId) {
 
     enableDropZones();
     enableRenameGroups();
-    enableAnnotationInputs();
     renderAddButton();
     enableDragStudents();
 
@@ -387,7 +393,14 @@ function addGroup() {
         </div>
         <div class="p-3">
             <div class="students-zone"></div>
-            <textarea class="annotation-input hidden" placeholder="Annotation…" rows="2"></textarea>
+            <div class="annotations-container hidden mt-3 border-t pt-3 border-gray-200">
+                <div class="annotations-list space-y-2 mb-3"></div>
+                <form class="annotation-form flex gap-2" onsubmit="return addGroupeAnnotation(this)">
+                    <textarea name="texte" placeholder="Nouvelle annotation…" rows="2" required
+                             class="annotation-new-input border rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1 resize-none"></textarea>
+                    <button type="submit" class="bg-indigo-600 text-white text-xs rounded px-2 py-1 hover:bg-indigo-700 transition self-end">Ajouter</button>
+                </form>
+            </div>
         </div>
     `;
     container.appendChild(div);
@@ -398,7 +411,6 @@ function addGroup() {
     enableDropZones();
     enableRenameGroups();
     updateCounters();
-    enableAnnotationInputs();
     groupCount++;
     renderAddButton();
 }
@@ -531,29 +543,58 @@ function enableRenameGroups() {
 }
 
 // --- Annotations ---
-const annotationTimers = new Map();
+async function loadGroupeAnnotations(box) {
+  const groupeId = box.dataset.groupeId;
+  if (!groupeId) return;
+  const list = box.querySelector(".annotations-list");
+  if (!list) return;
+  try {
+    const res = await fetch(API_BASE + "/api/annotations?groupe_id=" + groupeId);
+    const annotations = await res.json();
+    list.innerHTML = annotations.length
+      ? annotations.map(a => `
+        <div class="annotation-entry flex justify-between items-start gap-2 text-sm">
+          <div>
+            <span class="text-xs text-gray-400">${new Date(a.date_saisie).toLocaleDateString("fr-FR")}</span>
+            <p class="text-gray-700 whitespace-pre-wrap">${a.texte.replace(/</g, "&lt;")}</p>
+          </div>
+          <button onclick="deleteGroupeAnnotation(${a.id}, this)" class="text-red-400 hover:text-red-600 text-xs leading-none shrink-0" title="Supprimer">&#128465;</button>
+        </div>`).join("")
+      : '<p class="text-gray-400 italic text-sm">Aucune annotation.</p>';
+  } catch (e) { /* ignore */ }
+}
 
-function enableAnnotationInputs() {
-    document.querySelectorAll('.annotation-input').forEach(textarea => {
-        if (textarea.dataset.bound) return;
-        textarea.dataset.bound = '1';
-        textarea.addEventListener('input', () => {
-            const box = textarea.closest('.group-box');
-            const groupeId = box?.dataset.groupeId;
-            if (!groupeId) return;
-            if (annotationTimers.has(groupeId)) clearTimeout(annotationTimers.get(groupeId));
-            annotationTimers.set(groupeId, setTimeout(async () => {
-                annotationTimers.delete(groupeId);
-                try {
-                    await fetch(API_BASE + '/api/groupes/' + groupeId, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ annotation: textarea.value })
-                    });
-                } catch (e) { /* ignore */ }
-            }, 500));
-        });
+async function addGroupeAnnotation(form) {
+  const box = form.closest(".group-box");
+  const groupeId = box?.dataset.groupeId;
+  if (!groupeId) { alert("Sauvegardez d'abord le groupe."); return; }
+  const texte = form.querySelector("textarea").value.trim();
+  if (!texte) return;
+  try {
+    await fetch(API_BASE + "/api/annotations", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupe_id: parseInt(groupeId), texte })
     });
+    form.reset();
+    form.querySelector("textarea").focus();
+    await loadGroupeAnnotations(box);
+  } catch (e) { /* ignore */ }
+}
+
+async function deleteGroupeAnnotation(id, btn) {
+  if (!confirm("Supprimer cette annotation ?")) return;
+  try {
+    await fetch(API_BASE + "/api/annotations/" + id, { method: "DELETE" });
+    const entry = btn.closest(".annotation-entry");
+    if (entry) {
+      const list = entry.parentElement;
+      entry.remove();
+      if (!list.querySelector(".annotation-entry")) {
+        list.innerHTML = '<p class="text-gray-400 italic text-sm">Aucune annotation.</p>';
+      }
+    }
+  } catch (e) { /* ignore */ }
 }
 
 // --- Compteurs ---
@@ -619,8 +660,11 @@ container.addEventListener("click", (e) => {
     if (!btn) return;
     const box = btn.closest(".group-box");
     if (!box) return;
-    const ta = box.querySelector(".annotation-input");
-    if (ta) ta.classList.toggle("hidden");
+    const container_el = box.querySelector(".annotations-container");
+    if (container_el) {
+        const isHidden = container_el.classList.toggle("hidden");
+        if (!isHidden) loadGroupeAnnotations(box);
+    }
 });
 </script>
 {% endblock %}

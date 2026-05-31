@@ -6,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 class GroupeBase(BaseModel):
     nom: str = Field(..., min_length=1, max_length=100)
     projet_id: int
-    annotation: str | None = None
 
 
 class GroupeCreate(GroupeBase):
@@ -16,7 +15,6 @@ class GroupeCreate(GroupeBase):
 class GroupeUpdate(BaseModel):
     nom: str | None = Field(default=None, min_length=1, max_length=100)
     projet_id: int | None = None
-    annotation: str | None = None
 
 
 class GroupeOut(GroupeBase):

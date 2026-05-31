@@ -8,7 +8,6 @@ class EleveBase(BaseModel):
     prenom: str = Field(..., min_length=1, max_length=100)
     classe_id: int
     present: bool = True
-    annotation: str | None = None
 
 
 class EleveCreate(EleveBase):
@@ -20,7 +19,6 @@ class EleveUpdate(BaseModel):
     prenom: str | None = Field(default=None, min_length=1, max_length=100)
     classe_id: int | None = None
     present: bool | None = None
-    annotation: str | None = None
 
 
 class EleveOut(EleveBase):
