@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Place{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block head_extra %}
+<style>
+  .tile {
+    text-align: center;
+    padding: 24px 16px;
+    border-radius: 12px;
+    background: white;
+    text-decoration: none;
+    color: #333;
+    transition: 0.2s;
+    border: 1px solid #e5e7eb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: grab;
+  }
+  .tile:active { cursor: grabbing; }
+  .tile:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+  }
+  .tile.dragging {
+    opacity: 0.35;
+  }
+  .tile.drag-over {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+    transform: translateY(-2px);
+  }
+  .tile .icon {
+    font-size: 36px;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .tile .label {
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    pointer-events: none;
+  }
+  .tile-add {
+    cursor: pointer;
+    border-style: dashed;
+    background: #fafafa;
+  }
+  .tile-add:hover {
+    border-color: #6366f1;
+    background: #eef2ff;
+  }
+  .tile-custom .tile-delete {
+    display: none;
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ef4444;
+    color: white;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .tile-custom:hover .tile-delete {
+    display: block;
+  }
+  .tile-custom {
+    position: relative;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    width: 400px;
+    max-width: 90vw;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+  }
+  .emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 4px;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+  .emoji-option {
+    font-size: 22px;
+    text-align: center;
+    padding: 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    line-height: 1.4;
+  }
+  .emoji-option:hover {
+    background: #eef2ff;
+  }
+  .emoji-option.selected {
+    border-color: #6366f1;
+    background: #eef2ff;
+  }
+</style>
+{% endblock %}
+{% block content %}
+
+<div class="flex flex-col items-center gap-10">
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8 justify-center w-full max-w-3xl mx-auto"
+       data-grid-id="internal">
+
+    <a href="{{ url_for('classes_page') }}" class="tile" draggable="true" data-tile-id="classes">
+      <div class="icon">📚</div>
+      <div class="label">Classes</div>
+    </a>
+
+    <a href="{{ url_for('eleves_page') }}" class="tile" draggable="true" data-tile-id="eleves">
+      <div class="icon">🎓</div>
+      <div class="label">Élèves</div>
+    </a>
+
+    <a href="{{ url_for('distribution_page') }}" class="tile" draggable="true" data-tile-id="distribution">
+      <div class="icon">👥</div>
+      <div class="label">Distribution</div>
+    </a>
+
+    <div class="tile tile-add js-add-shortcut" data-grid="internal" data-tile-id="add-internal">
+      <div class="icon">➕</div>
+      <div class="label">Ajouter</div>
+    </div>
+
+  </div>
+
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-8 justify-center w-full max-w-3xl mx-auto"
+       data-grid-id="external">
+
+    <a href="https://duss.alwaysdata.net/bia/" class="tile" draggable="true" target="_blank" data-tile-id="site">
+      <div class="icon">🌐</div>
+      <div class="label">BIA</div>
+    </a>
+
+    <a href="https://duss.alwaysdata.net/chrono/" class="tile" draggable="true" target="_blank" data-tile-id="chronometre">
+      <div class="icon">⏱️</div>
+      <div class="label">Chronomètre</div>
+    </a>
+
+    <a href="https://duss.alwaysdata.net/emoticone/emoji.html" class="tile" draggable="true" target="_blank" data-tile-id="emoticones">
+      <div class="icon">😀</div>
+      <div class="label">Émoticônes</div>
+    </a>
+
+    <a href="https://duss.alwaysdata.net/myfiles/" class="tile" draggable="true" target="_blank" data-tile-id="fichiers">
+      <div class="icon">📁</div>
+      <div class="label">Fichiers</div>
+    </a>
+
+    <a href="http://duss.alwaysdata.net/suivi/hkpoint/" class="tile" draggable="true" data-tile-id="hackpoint">
+      <div class="icon">🎯</div>
+      <div class="label">Hackpoint</div>
+    </a>
+
+    <a href="https://axynis.cloud/" class="tile" draggable="true" target="_blank" data-tile-id="tagslinks">
+      <div class="icon">🔗</div>
+      <div class="label">Tags Links</div>
+    </a>
+
+    <a href="https://ent16.lacharente.fr/" class="tile" draggable="true" target="_blank" data-tile-id="ent">
+      <div class="icon">🏫</div>
+      <div class="label">ENT16</div>
+    </a>
+
+    <div class="tile tile-add js-add-shortcut" data-grid="external" data-tile-id="add-external">
+      <div class="icon">➕</div>
+      <div class="label">Ajouter</div>
+    </div>
+
+  </div>
+
+  <!-- Modal ajout raccourci -->
+  <div class="modal-overlay hidden" id="shortcutModal">
+    <div class="modal-box">
+      <h3 class="text-lg font-semibold text-gray-900 mb-4">Nouveau raccourci</h3>
+      <form id="shortcutForm" class="flex flex-col gap-3">
+        <input type="text" id="shortcutLabel" placeholder="Nom du raccourci" required
+               class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <input type="url" id="shortcutUrl" placeholder="https://..." required
+               class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <label class="text-sm text-gray-600 font-medium">Icône</label>
+        <div class="emoji-grid" id="emojiPicker"></div>
+        <input type="hidden" id="shortcutIcon" value="🔗">
+        <div class="flex gap-2 justify-end mt-2">
+          <button type="button" id="cancelShortcut"
+                  class="px-4 py-2 rounded border text-gray-600 hover:bg-gray-100 transition">Annuler</button>
+          <button type="submit"
+                  class="px-4 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700 transition">Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="pt-5 border-t border-gray-200 text-center w-full max-w-3xl">
+    <p class="text-gray-400 text-sm">© 2026 - Plateforme de Gestion Scolaire</p>
+  </div>
+
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  let draggedEl = null;
+  let currentGrid = null;
+  const modal = document.getElementById('shortcutModal');
+  const form = document.getElementById('shortcutForm');
+  const cancelBtn = document.getElementById('cancelShortcut');
+
+  function storageKey(gridId) {
+    return 'dashboard-custom-tiles-' + gridId;
+  }
+
+  function getCustomTiles(gridId) {
+    try { return JSON.parse(localStorage.getItem(storageKey(gridId)) || '[]'); }
+    catch (e) { return []; }
+  }
+
+  function setCustomTiles(gridId, data) {
+    localStorage.setItem(storageKey(gridId), JSON.stringify(data));
+  }
+
+  function saveOrder(grid) {
+    var gridId = grid.dataset.gridId;
+    var order = [];
+    grid.querySelectorAll('.tile:not(.tile-add)').forEach(function (t) {
+      order.push(t.dataset.tileId);
+    });
+    localStorage.setItem('dashboard-order-' + gridId, JSON.stringify(order));
+  }
+
+  function createTile(id, label, url, icon) {
+    var a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.className = 'tile tile-custom';
+    a.draggable = true;
+    a.dataset.tileId = 'custom-' + id;
+    a.innerHTML = '<div class="tile-delete" title="Supprimer">\u00d7</div>' +
+      '<div class="icon">' + (icon || '\u{1F517}') + '</div>' +
+      '<div class="label">' + label.replace(/</g, '&lt;') + '</div>';
+    return a;
+  }
+
+  function attachTileEvents(tile) {
+    tile.addEventListener('dragstart', onDragStart);
+    tile.addEventListener('dragend', onDragEnd);
+    tile.addEventListener('dragover', onDragOver);
+    tile.addEventListener('dragleave', onDragLeave);
+    tile.addEventListener('drop', onDrop);
+    tile.addEventListener('click', onTileClick);
+  }
+
+  function getAddBtn(grid) {
+    return grid.querySelector('.tile-add');
+  }
+
+  function createCustomTiles(grid) {
+    grid.querySelectorAll('.tile-custom').forEach(function (t) { t.remove(); });
+    var addBtn = getAddBtn(grid);
+    var tiles = getCustomTiles(grid.dataset.gridId);
+    var fragment = document.createDocumentFragment();
+    tiles.forEach(function (t) {
+      var el = createTile(t.id, t.label, t.url, t.icon);
+      attachTileEvents(el);
+      fragment.appendChild(el);
+    });
+    if (addBtn) grid.insertBefore(fragment, addBtn);
+  }
+
+  function restoreOrders() {
+    document.querySelectorAll('[data-grid-id]').forEach(function (grid) {
+      var gridId = grid.dataset.gridId;
+      var saved = localStorage.getItem('dashboard-order-' + gridId);
+      if (!saved) return;
+      var order = JSON.parse(saved);
+      var tiles = {};
+      var addBtn = null;
+      grid.querySelectorAll('.tile').forEach(function (t) {
+        if (t.classList.contains('tile-add')) {
+          addBtn = t;
+        } else {
+          tiles[t.dataset.tileId] = t;
+        }
+        t.remove();
+      });
+      order.forEach(function (id) {
+        if (tiles[id]) grid.appendChild(tiles[id]);
+      });
+      if (addBtn) grid.appendChild(addBtn);
+    });
+  }
+
+  // --- Drag & Drop handlers ---
+
+  function onDragStart(e) {
+    draggedEl = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+  }
+
+  function onDragEnd() {
+    this.classList.remove('dragging');
+    document.querySelectorAll('.tile.drag-over').forEach(function (t) { t.classList.remove('drag-over'); });
+    draggedEl = null;
+  }
+
+  function onDragOver(e) {
+    e.preventDefault();
+    if (!draggedEl || draggedEl === this) return;
+    var grid = this.closest('[data-grid-id]');
+    if (draggedEl.closest('[data-grid-id]') !== grid) return;
+    this.classList.add('drag-over');
+  }
+
+  function onDragLeave() {
+    this.classList.remove('drag-over');
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+    if (!draggedEl || draggedEl === this) return;
+    var grid = this.closest('[data-grid-id]');
+    if (draggedEl.closest('[data-grid-id]') !== grid) return;
+
+    var children = Array.from(grid.children);
+    var from = children.indexOf(draggedEl);
+    var to = children.indexOf(this);
+
+    if (from < to) {
+      grid.insertBefore(draggedEl, this.nextElementSibling);
+    } else {
+      grid.insertBefore(draggedEl, this);
+    }
+
+    saveOrder(grid);
+  }
+
+  function onTileClick(e) {
+    if (draggedEl) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  // --- Modal handlers ---
+
+  document.querySelectorAll('.js-add-shortcut').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      currentGrid = this.closest('[data-grid-id]');
+      modal.classList.remove('hidden');
+      document.getElementById('shortcutLabel').focus();
+    });
+  });
+
+  cancelBtn.addEventListener('click', function () {
+    modal.classList.add('hidden');
+    form.reset();
+  });
+
+  modal.addEventListener('click', function (e) {
+    if (e.target === modal) {
+      modal.classList.add('hidden');
+      form.reset();
+    }
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!currentGrid) return;
+    var label = document.getElementById('shortcutLabel').value.trim();
+    var url = document.getElementById('shortcutUrl').value.trim();
+    if (!label || !url) return;
+
+    var gridId = currentGrid.dataset.gridId;
+    var tiles = getCustomTiles(gridId);
+    var id = Date.now().toString(36);
+    var icon = document.getElementById('shortcutIcon').value;
+    tiles.push({ id: id, label: label, url: url, icon: icon });
+    setCustomTiles(gridId, tiles);
+
+    var el = createTile(id, label, url, icon);
+    attachTileEvents(el);
+    var addBtn = getAddBtn(currentGrid);
+    currentGrid.insertBefore(el, addBtn);
+
+    saveOrder(currentGrid);
+    modal.classList.add('hidden');
+    form.reset();
+    document.getElementById('shortcutIcon').value = '\u{1F517}';
+    document.querySelectorAll('.emoji-option').forEach(function (o) { o.classList.remove('selected'); });
+    var first = document.querySelector('.emoji-option');
+    if (first) first.classList.add('selected');
+  });
+
+  // --- Delete custom tile ---
+
+  document.querySelectorAll('[data-grid-id]').forEach(function (grid) {
+    grid.addEventListener('click', function (e) {
+      var delBtn = e.target.closest('.tile-delete');
+      if (!delBtn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      var tile = delBtn.closest('.tile-custom');
+      if (!tile || !confirm('Supprimer ce raccourci ?')) return;
+
+      var id = tile.dataset.tileId.replace('custom-', '');
+      var tiles = getCustomTiles(grid.dataset.gridId).filter(function (t) { return t.id !== id; });
+      setCustomTiles(grid.dataset.gridId, tiles);
+      tile.remove();
+      saveOrder(grid);
+    });
+  });
+
+  // --- Bind events to all existing tiles ---
+
+  document.querySelectorAll('.tile:not(.tile-add)').forEach(function (tile) {
+    attachTileEvents(tile);
+  });
+
+  // --- Emoji picker ---
+
+  var EMOJIS = [
+    '\u{1F517}','\u{1F310}','\u{1F4C1}','\u2B50','\u{1F4DA}','\u{1F393}','\u{1F465}','\u{1F3E0}','\u{1F3AF}','\u{1F3EB}',
+    '\u23F1\uFE0F','\u{1F600}','\u{1F4DD}','\u{1F4A1}','\u{1F527}','\u{1F4CA}','\u{1F3A8}','\u{1F3B5}','\u{1F4F7}','\u{1F4E7}',
+    '\u{1F4AC}','\u{1F4CC}','\u{1F512}','\u{1F30D}','\u{1F6E0}\uFE0F','\u{1F4C5}','\u{1F4CB}','\u{1F3C6}','\u{1F525}','\u{1F4BB}',
+    '\u{1F3AE}','\u{1F4F1}','\u26A1','\u{1F4D6}','\u{1F5C2}\uFE0F','\u{1F9E9}','\u2705','\u274C','\u2795','\u{1F50D}'
+  ];
+
+  var emojiPicker = document.getElementById('emojiPicker');
+  var iconField = document.getElementById('shortcutIcon');
+
+  EMOJIS.forEach(function (emoji, i) {
+    var span = document.createElement('span');
+    span.className = 'emoji-option' + (i === 0 ? ' selected' : '');
+    span.textContent = emoji;
+    span.addEventListener('click', function () {
+      emojiPicker.querySelectorAll('.emoji-option').forEach(function (o) { o.classList.remove('selected'); });
+      span.classList.add('selected');
+      iconField.value = emoji;
+    });
+    emojiPicker.appendChild(span);
+  });
+
+  // --- Init ---
+
+  document.querySelectorAll('[data-grid-id]').forEach(function (grid) {
+    createCustomTiles(grid);
+  });
+  restoreOrders();
+})();
+</script>
+{% endblock %}

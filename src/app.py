@@ -257,7 +257,7 @@ def create_app(testing=False, run_migrations=True):
 
     @app.route("/")
     def index():
-        return render_template("index.html")
+        return render_template("dashboard.html")
 
     @app.route("/distribution")
     def distribution_page():
@@ -270,6 +270,10 @@ def create_app(testing=False, run_migrations=True):
     @app.route("/eleves")
     def eleves_page():
         return render_template("eleves.html")
+
+    @app.route("/dashboard")
+    def dashboard():
+        return render_template("dashboard.html")
 
     prefix = app.config.get("APPLICATION_ROOT")
     if prefix and not testing:
