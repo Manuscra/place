@@ -14,3 +14,4 @@ static/css/output.css
 .ruff_cache/
 .mypy_cache/
 .env
+app.log
