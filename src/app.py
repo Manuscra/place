@@ -86,23 +86,6 @@ def create_app(testing=False, run_migrations=True):
         static_folder=os.path.join(_root, "static"),
     )
 
-    # Configure logging to file
-    log_file = os.path.join(_root, "app.log")
-    file_handler = logging.FileHandler(log_file)
-    file_handler.setLevel(logging.DEBUG)
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    file_handler.setFormatter(formatter)
-    
-    # Add handler to root logger
-    root_logger = logging.getLogger()
-    root_logger.addHandler(file_handler)
-    root_logger.setLevel(logging.DEBUG)
-    
-    # Also add to app logger
-    app.logger.addHandler(file_handler)
-
     env = os.environ.get("FLASK_ENV", "development")
     if testing:
         config_class = TestConfig
@@ -112,10 +95,6 @@ def create_app(testing=False, run_migrations=True):
         config_class = Config
 
     app.config.from_object(config_class)
-
-    logger.info(f"[app-init] Config class: {config_class.__name__}")
-    logger.info(f"[app-init] API_TOKEN present: {bool(app.config.get('API_TOKEN'))}")
-    logger.info(f"[app-init] API_URL: {app.config.get('API_URL')}")
 
     db.init_app(app)
 
@@ -142,28 +121,19 @@ def create_app(testing=False, run_migrations=True):
         api_token = app.config.get("API_TOKEN")
         api_url = app.config.get("API_URL")
         
-        logger.info(f"[external-links] API_TOKEN present: {bool(api_token)}")
-        logger.info(f"[external-links] API_URL: {api_url}")
-        
         if not api_token or not api_url:
-            logger.error("API_TOKEN or API_URL not configured")
-            return jsonify({"error": "Missing API_TOKEN or API_URL", "links": []}), 500
+            logger.warning("API_TOKEN or API_URL not configured")
+            return jsonify({"links": []}), 200
         
         try:
             # Construct the API URL with the required tags
             full_url = f"{api_url}links?tags=Partage,Menu_place"
             headers = {"Authorization": f"Bearer {api_token}"}
             
-            logger.info(f"[external-links] Fetching from: {full_url}")
-            
             response = requests.get(full_url, headers=headers, timeout=10)
-            logger.info(f"[external-links] Response status: {response.status_code}")
-            
             response.raise_for_status()
             
             data = response.json()
-            logger.info(f"[external-links] Received {len(data) if isinstance(data, list) else 0} items")
-            
             if not isinstance(data, list):
                 data = []
             
@@ -177,7 +147,6 @@ def create_app(testing=False, run_migrations=True):
                     "id": item.get("id")
                 })
             
-            logger.info(f"[external-links] Returning {len(links)} links")
             return jsonify({"links": links}), 200
         except requests.RequestException as e:
             logger.error(f"Failed to fetch external links: {e}")
