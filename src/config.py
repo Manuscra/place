@@ -11,6 +11,8 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "DATABASE_URL", f"sqlite:///{BASE_DIR / 'place.db'}"
     )
+    API_TOKEN = os.environ.get("API_TOKEN", "")
+    API_URL = os.environ.get("API_URL", "")
 
 
 class TestConfig(Config):

@@ -5,6 +5,7 @@ import os
 import sqlite3
 import sys
 
+import requests
 from flask import Flask, jsonify, render_template, request
 from pydantic import ValidationError
 
@@ -113,6 +114,43 @@ def create_app(testing=False, run_migrations=True):
 
     register_all(app)
     app.register_blueprint(place_bp)
+
+    @app.route("/api/external-links", methods=["GET"])
+    def get_external_links():
+        """Fetch external links from Axynis API."""
+        api_token = app.config.get("API_TOKEN")
+        api_url = app.config.get("API_URL")
+        
+        if not api_token or not api_url:
+            logger.warning("API_TOKEN or API_URL not configured")
+            return jsonify({"links": []}), 200
+        
+        try:
+            # Construct the API URL with the required tags
+            full_url = f"{api_url}links?tags=Partage,Menu_place"
+            headers = {"Authorization": f"Bearer {api_token}"}
+            
+            response = requests.get(full_url, headers=headers, timeout=10)
+            response.raise_for_status()
+            
+            data = response.json()
+            if not isinstance(data, list):
+                data = []
+            
+            # Transform API response to match our template format
+            links = []
+            for item in data:
+                links.append({
+                    "url": item.get("url"),
+                    "title": item.get("title"),
+                    "description": item.get("description"),  # the emoji
+                    "id": item.get("id")
+                })
+            
+            return jsonify({"links": links}), 200
+        except requests.RequestException as e:
+            logger.error(f"Failed to fetch external links: {e}")
+            return jsonify({"error": str(e), "links": []}), 500
 
     @app.route("/api/reset", methods=["POST"])
     def reset_db():
