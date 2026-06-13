@@ -560,7 +560,7 @@ async function loadEleveAnnotations(card) {
           const hasLink = a.projet_id && a.classe_id;
           const metaContent = `${dateStr}${a.projet_nom ? " · " + a.projet_nom : ""}${groupespan}`;
           const metaHtml = hasLink
-            ? `<a href="/distribution?classe_id=${a.classe_id}&projet_id=${a.projet_id}" class="text-xs text-gray-400 hover:text-indigo-600">${metaContent}</a>`
+            ? `<a href="${API_BASE}/distribution?classe_id=${a.classe_id}&projet_id=${a.projet_id}" class="text-xs text-gray-400 hover:text-indigo-600">${metaContent}</a>`
             : `<span class="text-xs text-gray-400">${metaContent}</span>`;
           return `
         <div class="annotation-entry flex justify-between items-start gap-2 text-sm">
