@@ -553,14 +553,19 @@ async function loadEleveAnnotations(card) {
     const annotations = await api(`/api/annotations?eleve_id=${eleveId}`);
     list.innerHTML = annotations.length
       ? annotations.map(a => {
-          const groupeBadge = a.groupe_nom
-            ? `<span class="text-xs text-gray-400"> - ${a.groupe_nom.replace(/</g, "&lt;")}</span>`
+          const groupespan = a.groupe_nom
+            ? ` - ${a.groupe_nom.replace(/</g, "&lt;")}`
             : "";
+          const dateStr = new Date(a.date_saisie).toLocaleDateString("fr-FR");
+          const hasLink = a.projet_id && a.classe_id;
+          const metaContent = `${dateStr}${a.projet_nom ? " · " + a.projet_nom : ""}${groupespan}`;
+          const metaHtml = hasLink
+            ? `<a href="/distribution?classe_id=${a.classe_id}&projet_id=${a.projet_id}" class="text-xs text-gray-400 hover:text-indigo-600">${metaContent}</a>`
+            : `<span class="text-xs text-gray-400">${metaContent}</span>`;
           return `
         <div class="annotation-entry flex justify-between items-start gap-2 text-sm">
           <div>
-            <span class="text-xs text-gray-400">${new Date(a.date_saisie).toLocaleDateString("fr-FR")}</span>
-            ${groupeBadge}
+            ${metaHtml}
             <p class="text-gray-700 whitespace-pre-wrap">${a.texte.replace(/</g, "&lt;")}</p>
           </div>
           <button onclick="deleteAnnotation(${a.id}, this)" class="text-red-400 hover:text-red-600 text-xs leading-none shrink-0" title="Supprimer">&#128465;</button>

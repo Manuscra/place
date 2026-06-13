@@ -650,10 +650,28 @@ async function saveAssignments() {
 }
 
 // --- Init ---
-loadClasses();
-resetGroups();
-enableDropZones();
-enableRenameGroups();
+(async () => {
+  await loadClasses();
+
+  const params = new URLSearchParams(location.search);
+  const urlClasseId = params.get("classe_id");
+  const urlProjetId = params.get("projet_id");
+
+  if (urlClasseId) {
+    classSelect.value = urlClasseId;
+    currentClasseId = parseInt(urlClasseId);
+    createProjetBtn.disabled = false;
+    await loadProjets(currentClasseId);
+
+    if (urlProjetId) {
+      selectProjet(parseInt(urlProjetId));
+    }
+  }
+
+  resetGroups();
+  enableDropZones();
+  enableRenameGroups();
+})();
 
 container.addEventListener("click", (e) => {
     const btn = e.target.closest(".annotation-toggle-btn");

@@ -19,6 +19,22 @@ class Annotation(db.Model):
     def groupe_nom(self):
         return self.groupe.nom if self.groupe else None
 
+    @property
+    def projet_nom(self):
+        return self.groupe.projet.nom if self.groupe and self.groupe.projet else None
+
+    @property
+    def projet_id(self):
+        return self.groupe.projet_id if self.groupe else None
+
+    @property
+    def classe_id(self):
+        if self.eleve:
+            return self.eleve.classe_id
+        if self.groupe and self.groupe.projet:
+            return self.groupe.projet.classe_id
+        return None
+
     def to_dict(self):
         return {
             "id": self.id,

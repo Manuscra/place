@@ -16,5 +16,8 @@ class AnnotationOut(BaseModel):
     eleve_id: int | None = None
     groupe_id: int | None = None
     groupe_nom: str | None = None
+    projet_nom: str | None = None
+    projet_id: int | None = None
+    classe_id: int | None = None
     texte: str
     date_saisie: datetime

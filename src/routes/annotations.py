@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy.orm import joinedload
 
 from ..database import db
-from ..models import Annotation, EleveGroupe
+from ..models import Annotation, EleveGroupe, Groupe
 from ..schemas import AnnotationCreate, AnnotationOut
 
 annotations_bp = Blueprint("annotations", __name__, url_prefix="/api/annotations")
@@ -12,7 +12,7 @@ annotations_bp = Blueprint("annotations", __name__, url_prefix="/api/annotations
 def list_annotations():
     eleve_id = request.args.get("eleve_id", type=int)
     groupe_id = request.args.get("groupe_id", type=int)
-    query = Annotation.query.options(joinedload(Annotation.groupe)).order_by(Annotation.date_saisie.desc())
+    query = Annotation.query.options(joinedload(Annotation.eleve), joinedload(Annotation.groupe).joinedload(Groupe.projet)).order_by(Annotation.date_saisie.desc())
     if eleve_id is not None:
         groupe_ids_subq = db.session.query(EleveGroupe.groupe_id).filter(EleveGroupe.eleve_id == eleve_id)
         query = query.filter(
