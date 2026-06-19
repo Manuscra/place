@@ -12,10 +12,9 @@ from pydantic import ValidationError
 
 from .config import Config, ProdConfig, TestConfig
 from .database import db
-from .models import Annotation, Classe, Eleve, EleveGroupe, Groupe, Projet, User
+from .models import Annotation, Classe, Eleve, EleveGroupe, Groupe, Projet
 from .place import place_bp
 from .routes import register_all
-from .routes.auth import login_required
 
 logger = logging.getLogger(__name__)
 
