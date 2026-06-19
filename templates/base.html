@@ -12,14 +12,31 @@
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ url_for('index') }}" class="text-lg font-bold text-indigo-600">{% block page_title %}Répartition des élèves{% endblock %}</a>
-            <div class="flex gap-4 text-sm text-gray-600">
-                <a href="{{ url_for('classes_page') }}" class="hover:text-indigo-600">Classes</a>
-                <a href="{{ url_for('eleves_page') }}" class="hover:text-indigo-600">Élèves</a>
-                <a href="{{ url_for('distribution_page') }}" class="hover:text-indigo-600">Distribution</a>
+            <div class="flex gap-4 items-center">
+                <div class="flex gap-4 text-sm text-gray-600">
+                    <a href="{{ url_for('classes_page') }}" class="hover:text-indigo-600">Classes</a>
+                    <a href="{{ url_for('eleves_page') }}" class="hover:text-indigo-600">Élèves</a>
+                    <a href="{{ url_for('distribution_page') }}" class="hover:text-indigo-600">Distribution</a>
+                </div>
+                <div class="border-l pl-4">
+                    <span class="text-sm text-gray-600 mr-3">{{ session.get('username', 'Utilisateur') }}</span>
+                    <form method="POST" action="{{ url_for('auth.logout') }}" style="display: inline;">
+                        <button type="submit" class="text-sm text-gray-600 hover:text-red-600">Déconnexion</button>
+                    </form>
+                </div>
             </div>
         </div>
     </nav>
     <main class="max-w-5xl mx-auto px-4 py-8">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-4 rounded-lg {% if category == 'danger' %}bg-red-50 text-red-800 border border-red-200{% elif category == 'success' %}bg-green-50 text-green-800 border border-green-200{% elif category == 'warning' %}bg-yellow-50 text-yellow-800 border border-yellow-200{% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
         {% block content %}{% endblock %}
     </main>
     <script>var API_BASE = "{{ url_for('static', filename='x') }}".split("/static")[0];</script>

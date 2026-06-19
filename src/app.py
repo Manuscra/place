@@ -7,13 +7,15 @@ import sys
 
 import requests
 from flask import Flask, jsonify, render_template, request
+from flask_session import Session
 from pydantic import ValidationError
 
 from .config import Config, ProdConfig, TestConfig
 from .database import db
-from .models import Annotation, Classe, Eleve, EleveGroupe, Groupe, Projet
+from .models import Annotation, Classe, Eleve, EleveGroupe, Groupe, Projet, User
 from .place import place_bp
 from .routes import register_all
+from .routes.auth import login_required
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +98,10 @@ def create_app(testing=False, run_migrations=True):
 
     app.config.from_object(config_class)
 
+    # Configure Flask-Session
+    app.config["SESSION_TYPE"] = "filesystem"
+    Session(app)
+
     db.init_app(app)
 
     with app.app_context():
@@ -111,6 +117,33 @@ def create_app(testing=False, run_migrations=True):
     @app.errorhandler(ValidationError)
     def handle_validation_error(e):
         return jsonify({"error": str(e.errors())}), 422
+
+    @app.before_request
+    def check_auth():
+        """Check if user is authenticated for protected routes."""
+        from flask import session as flask_session
+        from flask import url_for
+        
+        # List of routes that don't require authentication
+        public_routes = [
+            "auth.login",
+            "auth.register",
+            "auth.logout",
+            "static",
+        ]
+        
+        # Check if current endpoint is in public_routes
+        if request.endpoint:
+            if request.endpoint.startswith("static"):
+                return
+            if request.endpoint in public_routes:
+                return
+        
+        # If user not authenticated, redirect to login
+        if "user_id" not in flask_session:
+            from flask import redirect, flash
+            flash("Veuillez vous connecter.", "warning")
+            return redirect(url_for("auth.login"))
 
     register_all(app)
     app.register_blueprint(place_bp)
