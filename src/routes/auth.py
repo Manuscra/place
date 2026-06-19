@@ -2,7 +2,7 @@
 
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from pydantic import ValidationError
 
 from ..database import db
@@ -57,6 +57,10 @@ def login():
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register():
     """Handle user registration."""
+    if not current_app.config.get("REGISTRATION_ENABLED", True):
+        flash("L'inscription est actuellement désactivée.", "warning")
+        return redirect(url_for("auth.login"))
+
     if request.method == "POST":
         try:
             data = UserRegister(

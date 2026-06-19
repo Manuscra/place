@@ -13,6 +13,7 @@ class Config:
     )
     API_TOKEN = os.environ.get("API_TOKEN", "")
     API_URL = os.environ.get("API_URL", "")
+    REGISTRATION_ENABLED = os.environ.get("REGISTRATION_ENABLED", "true").lower() in ("true", "1", "yes")
 
 
 class TestConfig(Config):
