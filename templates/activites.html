@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}Activités - MyEnt{% endblock %}
+{% block page_title %}Activités{% endblock %}
+{% block head_extra %}
+  <style>
+  .subtab-active { border-bottom: 2px solid #4f46e5; color: #4f46e5; font-weight: 600; }
+  .subtab { cursor: pointer; padding: 8px 16px; font-size: 14px; border-bottom: 2px solid transparent; }
+  .subtab:hover { color: #4f46e5; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 500; }
+  .badge-quizz { background: #dbeafe; color: #1d4ed8; }
+  .badge-lien { background: #dcfce7; color: #15803d; }
+  .card-row { display: flex; align-items: center; justify-content: space-between; }
+  .attrib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 4px; }
+  .attrib-check { display: flex; align-items: center; gap: 4px; font-size: 13px; padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 6px; }
+  .attrib-check:hover { background: #f3f4f6; }
+  .attrib-check.checked { background: #eef2ff; border-color: #6366f1; }
+  .cn-matrix { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .cn-matrix th, .cn-matrix td { padding: 8px 12px; border: 1px solid #e5e7eb; text-align: center; }
+  .cn-matrix thead th { background: #f9fafb; font-weight: 600; color: #374151; position: sticky; top: 0; }
+  .cn-matrix td.chap-name { text-align: left; font-weight: 500; background: #f9fafb; }
+  .cn-matrix tr:hover td { background: #f3f4f6; }
+  .cn-matrix tr:hover td.chap-name { background: #eef2ff; }
+  .cn-matrix input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: #6366f1; }
+  .pos-container { position: relative; display: inline-block; margin: 0 auto; }
+  .pos-container img { display: block; max-width: 100%; height: auto; }
+  .pos-label { position: absolute; font-size: 10pt; font-family: Arial, sans-serif; color: #000; width: 120px; padding: 2px 4px; border: 1px solid #6366f1; background: rgba(255,255,255,0.9); border-radius: 4px; cursor: grab; user-select: none; z-index: 10; }
+  .pos-label:active { cursor: grabbing; }
+  .pos-label.dragging { opacity: 0.7; z-index: 20; }
+</style>
+{% endblock %}
+{% block content %}
+
+<!-- Sub-tabs -->
+<div class="flex gap-2 mb-6 border-b pb-0 overflow-x-auto">
+  <span class="subtab subtab-active" data-tab="activites">Activités</span>
+  <span class="subtab" data-tab="chapitres">Chapitres</span>
+  <span class="subtab" data-tab="niveaux">Niveaux</span>
+  <span class="subtab" data-tab="images">Images</span>
+  <span class="subtab" data-tab="liens">Liens</span>
+  <span class="subtab" data-tab="reponses">Réponses</span>
+  <span class="subtab" data-tab="attributions">Attributions</span>
+  <span class="subtab" data-tab="positionnement">Positionnement</span>
+</div>
+
+<!-- Tab: Activités -->
+<div id="tab-activites" class="tab-content">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form id="create-activite" class="flex flex-wrap items-center gap-3">
+      <input type="text" name="Name_Act" placeholder="Nom de l'activité" required
+             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]">
+      <select name="Type_Act" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+        <option value="1">Quizz</option>
+        <option value="2">Lien</option>
+      </select>
+      <select name="No_dImg" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" id="new-act-img-select"></select>
+      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    </form>
+  </div>
+  <div id="activites-list" class="grid gap-4"></div>
+</div>
+
+<!-- Tab: Chapitres -->
+<div id="tab-chapitres" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form id="create-chapitre" class="flex items-center gap-3">
+      <input type="text" name="Name_Chap" placeholder="Nom du chapitre" required
+             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    </form>
+  </div>
+  <div id="chapitres-list" class="grid gap-3"></div>
+</div>
+
+<!-- Tab: Niveaux -->
+<div id="tab-niveaux" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form id="create-niveau" class="flex items-center gap-3">
+      <input type="text" name="Name_Niv" placeholder="Nom du niveau" required
+             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    </form>
+  </div>
+  <div id="niveaux-list" class="grid gap-3"></div>
+</div>
+
+<!-- Tab: Images -->
+<div id="tab-images" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form id="create-image" class="flex items-center gap-3">
+      <input type="text" name="N_Img" placeholder="Référence image" required
+             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    </form>
+  </div>
+  <div id="images-list" class="grid gap-3"></div>
+</div>
+
+<!-- Tab: Liens -->
+<div id="tab-liens" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form id="create-lien" class="flex items-center gap-3">
+      <input type="text" name="Link" placeholder="URL du lien" required
+             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 flex-1">
+      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    </form>
+  </div>
+  <div id="liens-list" class="grid gap-3"></div>
+</div>
+
+<!-- Tab: Réponses -->
+<div id="tab-reponses" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-8">
+    <form id="create-reponse" class="flex items-center gap-3">
+      <input type="text" name="Reponse" placeholder="Texte de la réponse" required
+             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    </form>
+  </div>
+  <div id="reponses-list" class="grid gap-3"></div>
+</div>
+
+<!-- Tab: Attributions -->
+<div id="tab-attributions" class="tab-content hidden">
+  <div class="flex gap-3 mb-6">
+    <button class="attrib-btn bg-indigo-100 text-indigo-700 rounded px-4 py-2 text-sm font-medium" data-attrib="act-chap">Activité → Chapitre</button>
+    <button class="attrib-btn bg-white border rounded px-4 py-2 text-sm" data-attrib="act-niv">Activité → Niveau</button>
+    <button class="attrib-btn bg-white border rounded px-4 py-2 text-sm" data-attrib="chap-niv">Chapitre → Niveau</button>
+  </div>
+  <div id="attrib-act-chap" class="attrib-panel">
+    <div class="bg-white rounded-lg shadow p-4 overflow-x-auto" style="max-height: 70vh; overflow-y: auto;">
+      <table class="cn-matrix" id="ac-matrix-table"></table>
+    </div>
+    <button id="attrib-ac-save" class="mt-4 bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition text-sm">Enregistrer</button>
+  </div>
+  <div id="attrib-act-niv" class="attrib-panel hidden">
+    <div class="bg-white rounded-lg shadow p-4 overflow-x-auto" style="max-height: 70vh; overflow-y: auto;">
+      <table class="cn-matrix" id="an-matrix-table"></table>
+    </div>
+    <button id="attrib-an-save" class="mt-4 bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition text-sm">Enregistrer</button>
+  </div>
+  <div id="attrib-chap-niv" class="attrib-panel hidden">
+    <div class="bg-white rounded-lg shadow p-4 overflow-x-auto">
+      <table class="cn-matrix" id="cn-matrix-table"></table>
+    </div>
+    <button id="attrib-cn-save" class="mt-4 bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition text-sm">Enregistrer</button>
+  </div>
+</div>
+
+<!-- Tab: Positionnement -->
+<div id="tab-positionnement" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="flex items-center gap-4">
+      <label class="text-sm font-medium">Activité :</label>
+      <select id="pos-act-select" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 min-w-[250px]">
+        <option value="">-- Choisir une activité --</option>
+      </select>
+      <span id="pos-loading" class="text-sm text-gray-400 hidden">Chargement...</span>
+    </div>
+  </div>
+  <div id="pos-area" class="bg-white rounded-lg shadow p-4 overflow-auto" style="min-height: 500px;">
+    <p class="text-gray-400 italic text-center">Sélectionnez une activité pour commencer.</p>
+  </div>
+</div>
+{% endblock %}

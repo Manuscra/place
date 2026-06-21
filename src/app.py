@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from .config import Config, ProdConfig, TestConfig
 from .database import db
-from .models import Annotation, Classe, Eleve, EleveGroupe, Groupe, Projet
+from .models import Activite, Annotation, Classe, Eleve, EleveGroupe, Groupe, Projet
 from .place import place_bp
 from .routes import register_all
 
@@ -191,6 +191,7 @@ def create_app(testing=False, run_migrations=True):
         db.session.query(Eleve).delete()
         db.session.query(Groupe).delete()
         db.session.query(Projet).delete()
+        db.session.query(Activite).delete()
         db.session.query(Classe).delete()
         db.session.commit()
         return jsonify({"message": "Database reset"}), 200
@@ -340,6 +341,10 @@ def create_app(testing=False, run_migrations=True):
     @app.route("/eleves")
     def eleves_page():
         return render_template("eleves.html")
+
+    @app.route("/activites")
+    def activites_page():
+        return render_template("activites.html")
 
     @app.route("/dashboard")
     def dashboard():

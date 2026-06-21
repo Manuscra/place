@@ -1,3 +1,4 @@
+from .activites import activites_bp
 from .annotations import annotations_bp
 from .auth import auth_bp
 from .classes import classes_bp
@@ -7,5 +8,5 @@ from .projets import projets_bp
 
 
 def register_all(app):
-    for bp in (auth_bp, annotations_bp, classes_bp, eleves_bp, groupes_bp, projets_bp):
+    for bp in (auth_bp, annotations_bp, activites_bp, classes_bp, eleves_bp, groupes_bp, projets_bp):
         app.register_blueprint(bp)

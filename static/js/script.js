@@ -10,7 +10,12 @@ async function api(url, options = {}) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.error || `HTTP ${res.status}`);
   }
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    throw new Error("Réponse invalide du serveur");
+  }
 }
 
 // Toast notification
@@ -604,6 +609,807 @@ async function deleteAnnotation(id, btn) {
     }
   } catch (err) { toast(err.message, "error"); }
 }
+
+// --- Activites page ---
+// Sub-tab switching
+if (document.querySelector(".subtab")) {
+  document.querySelectorAll(".subtab").forEach(function(tab) {
+    tab.addEventListener("click", function() {
+      var name = this.dataset.tab;
+      document.querySelectorAll(".subtab").forEach(function(t) { t.classList.remove("subtab-active"); });
+      this.classList.add("subtab-active");
+      document.querySelectorAll(".tab-content").forEach(function(c) { c.classList.add("hidden"); });
+      var panel = document.getElementById("tab-" + name);
+      if (panel) panel.classList.remove("hidden");
+      if (name === "activites") loadActivites();
+      if (name === "chapitres") loadChapitres();
+      if (name === "niveaux") loadNiveaux();
+      if (name === "images") loadImages();
+      if (name === "liens") loadLiens();
+      if (name === "reponses") loadReponses();
+      if (name === "attributions") loadAttributions();
+      if (name === "positionnement") setupPositionnement();
+    });
+  });
+}
+
+// ======================== ACTIVITES ========================
+if (document.getElementById("create-activite")) {
+  loadImagesForSelect(document.getElementById("new-act-img-select"));
+
+  document.getElementById("create-activite").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    var form = new FormData(e.target);
+    var data = Object.fromEntries(form);
+    data.Type_Act = parseInt(data.Type_Act);
+    data.No_dImg = parseInt(data.No_dImg) || 0;
+    try {
+      await api("/api/activites", { method: "POST", body: JSON.stringify(data) });
+      e.target.reset();
+      toast("Activité créée !");
+      loadActivites();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadImagesForSelect(select) {
+  if (!select) return;
+  var imgs = await api("/api/activites/images");
+  select.innerHTML = '<option value="0">-- Aucune image --</option>' +
+    imgs.map(function(i) { return '<option value="' + i.No_Img + '">' + i.N_Img + '</option>'; }).join("");
+}
+
+async function loadActivites() {
+  var activites = await api("/api/activites");
+  var list = document.getElementById("activites-list");
+  if (!list) return;
+  list.innerHTML = activites.map(function(a) {
+    var typeBadge = a.Type_Act === 1
+      ? '<span class="badge badge-quizz">Quizz</span>'
+      : (a.lien_url
+          ? '<span class="badge badge-lien">Lien</span> <a href="' + a.lien_url.replace(/"/g, "&quot;") + '" target="_blank" class="text-xs text-indigo-500 hover:underline ml-1 truncate max-w-[200px] inline-block">' + (a.lien_url.length > 50 ? a.lien_url.substring(0, 50) + "..." : a.lien_url) + '</a>'
+          : '<span class="badge badge-lien">Lien</span>');
+
+    var imgName = a.img_name ? '<span class="text-xs text-gray-400 ml-2">Img: ' + a.img_name + '</span>' : '';
+    var chaps = (a.chapitre_names && a.chapitre_names.length) ? '<div class="text-xs text-gray-400 mt-1">Chapitres: ' + a.chapitre_names.join(", ") + '</div>' : '';
+    var nivs = (a.niveau_names && a.niveau_names.length) ? '<div class="text-xs text-gray-400">Niveaux: ' + a.niveau_names.join(", ") + '</div>' : '';
+
+    return '<div class="bg-white rounded-lg shadow p-4" data-id="' + a.No_Act + '">' +
+      '<div class="card-row">' +
+        '<div class="flex-1">' +
+          '<div class="flex items-center gap-2 mb-1">' +
+            '<h3 class="font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600">' + a.Name_Act + '</h3>' +
+            typeBadge + imgName +
+          '</div>' +
+          chaps + nivs +
+        '</div>' +
+        '<div class="flex items-center gap-2">' +
+          '<select onchange="changeActType(' + a.No_Act + ', this)" class="border rounded px-2 py-1 text-xs">' +
+            '<option value="1"' + (a.Type_Act === 1 ? ' selected' : '') + '>Quizz</option>' +
+            '<option value="2"' + (a.Type_Act === 2 ? ' selected' : '') + '>Lien</option>' +
+          '</select>' +
+          '<button onclick="deleteActivite(' + a.No_Act + ')" class="text-red-500 hover:text-red-700 text-sm" title="Supprimer">&#128465;</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+async function changeActType(id, select) {
+  var newType = parseInt(select.value);
+  try {
+    await api("/api/activites/" + id, {
+      method: "PUT",
+      body: JSON.stringify({ Type_Act: newType })
+    });
+    loadActivites();
+  } catch (err) { toast(err.message, "error"); loadActivites(); }
+}
+
+async function deleteActivite(id) {
+  if (!confirm("Supprimer cette activité ?")) return;
+  try {
+    await api("/api/activites/" + id, { method: "DELETE" });
+    toast("Activité supprimée.");
+    loadActivites();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function renameActivite(card) {
+  var id = parseInt(card.dataset.id);
+  var h3 = card.querySelector("h3.activite-name");
+  var currentName = h3.textContent.trim();
+
+  var input = document.createElement("input");
+  input.type = "text";
+  input.value = currentName;
+  input.className = "border rounded px-2 py-1 text-sm font-semibold w-full focus:ring-2 focus:ring-indigo-500";
+  h3.replaceWith(input);
+  input.focus();
+  input.select();
+
+  async function doSave() {
+    if (input._saving) return;
+    input._saving = true;
+    var val = input.value.trim() || currentName;
+    var newH3 = document.createElement("h3");
+    newH3.className = "font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600";
+    newH3.textContent = val;
+    input.replaceWith(newH3);
+    if (val !== currentName) {
+      try {
+        await api("/api/activites/" + id, { method: "PUT", body: JSON.stringify({ Name_Act: val }) });
+      } catch (err) {
+        newH3.textContent = currentName;
+      }
+    }
+  }
+
+  input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+  input.addEventListener("blur", doSave);
+}
+
+if (document.getElementById("activites-list")) {
+  loadActivites();
+  document.getElementById("activites-list").addEventListener("click", function(e) {
+    if (e.target.closest("button, input, form, textarea, select, a")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    if (card._clickTimer) { clearTimeout(card._clickTimer); card._clickTimer = null; return; }
+    card._clickTimer = setTimeout(function() { card._clickTimer = null; }, 250);
+  });
+  document.getElementById("activites-list").addEventListener("dblclick", function(e) {
+    if (e.target.closest("button, input, form, textarea, select, a")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    if (card._clickTimer) { clearTimeout(card._clickTimer); card._clickTimer = null; }
+    renameActivite(card);
+  });
+}
+
+// ======================== CHAPITRES ========================
+if (document.getElementById("create-chapitre")) {
+  document.getElementById("create-chapitre").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    var form = new FormData(e.target);
+    try {
+      await api("/api/activites/chapitres", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+      e.target.reset();
+      toast("Chapitre créé !");
+      loadChapitres();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadChapitres() {
+  var chaps = await api("/api/activites/chapitres");
+  var list = document.getElementById("chapitres-list");
+  if (!list) return;
+  list.innerHTML = chaps.map(function(c) {
+    return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + c.No_chap + '">' +
+      '<h3 class="font-semibold text-gray-900 chap-name cursor-pointer hover:text-indigo-600">' + c.Name_Chap + '</h3>' +
+      '<button onclick="deleteChap(' + c.No_chap + ')" class="text-red-500 hover:text-red-700 text-sm">&#128465;</button>' +
+    '</div>';
+  }).join("");
+}
+
+async function deleteChap(id) {
+  if (!confirm("Supprimer ce chapitre ?")) return;
+  try {
+    await api("/api/activites/chapitres/" + id, { method: "DELETE" });
+    toast("Chapitre supprimé.");
+    loadChapitres();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("chapitres-list")) {
+  document.getElementById("chapitres-list").addEventListener("dblclick", function(e) {
+    if (e.target.closest("button")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    var id = parseInt(card.dataset.id);
+    var h3 = card.querySelector("h3.chap-name");
+    var current = h3.textContent.trim();
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = current;
+    input.className = "border rounded px-2 py-1 text-sm w-full font-semibold";
+    h3.replaceWith(input);
+    input.focus();
+    input.select();
+    async function save() {
+      var val = input.value.trim() || current;
+      var newH3 = document.createElement("h3");
+      newH3.className = "font-semibold text-gray-900 chap-name cursor-pointer hover:text-indigo-600";
+      newH3.textContent = val;
+      input.replaceWith(newH3);
+      if (val !== current) {
+        try { await api("/api/activites/chapitres/" + id, { method: "PUT", body: JSON.stringify({ Name_Chap: val }) }); }
+        catch (err) { newH3.textContent = current; }
+      }
+    }
+    input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
+    input.addEventListener("blur", save);
+  });
+}
+
+// ======================== NIVEAUX ========================
+if (document.getElementById("create-niveau")) {
+  document.getElementById("create-niveau").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    var form = new FormData(e.target);
+    try {
+      await api("/api/activites/niveaux", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+      e.target.reset();
+      toast("Niveau créé !");
+      loadNiveaux();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadNiveaux() {
+  var nivs = await api("/api/activites/niveaux");
+  var list = document.getElementById("niveaux-list");
+  if (!list) return;
+  list.innerHTML = nivs.map(function(n) {
+    return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + n.No_Niv + '">' +
+      '<h3 class="font-semibold text-gray-900 niv-name cursor-pointer hover:text-indigo-600">' + n.Name_Niv + '</h3>' +
+      '<button onclick="deleteNiv(' + n.No_Niv + ')" class="text-red-500 hover:text-red-700 text-sm">&#128465;</button>' +
+    '</div>';
+  }).join("");
+}
+
+async function deleteNiv(id) {
+  if (!confirm("Supprimer ce niveau ?")) return;
+  try {
+    await api("/api/activites/niveaux/" + id, { method: "DELETE" });
+    toast("Niveau supprimé.");
+    loadNiveaux();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("niveaux-list")) {
+  document.getElementById("niveaux-list").addEventListener("dblclick", function(e) {
+    if (e.target.closest("button")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    var id = parseInt(card.dataset.id);
+    var h3 = card.querySelector("h3.niv-name");
+    var current = h3.textContent.trim();
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = current;
+    input.className = "border rounded px-2 py-1 text-sm w-full font-semibold";
+    h3.replaceWith(input);
+    input.focus();
+    input.select();
+    async function save() {
+      var val = input.value.trim() || current;
+      var newH3 = document.createElement("h3");
+      newH3.className = "font-semibold text-gray-900 niv-name cursor-pointer hover:text-indigo-600";
+      newH3.textContent = val;
+      input.replaceWith(newH3);
+      if (val !== current) {
+        try { await api("/api/activites/niveaux/" + id, { method: "PUT", body: JSON.stringify({ Name_Niv: val }) }); }
+        catch (err) { newH3.textContent = current; }
+      }
+    }
+    input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
+    input.addEventListener("blur", save);
+  });
+}
+
+// ======================== IMAGES ========================
+if (document.getElementById("create-image")) {
+  document.getElementById("create-image").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    var form = new FormData(e.target);
+    try {
+      await api("/api/activites/images", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+      e.target.reset();
+      toast("Image créée !");
+      loadImages();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadImages() {
+  var imgs = await api("/api/activites/images");
+  var list = document.getElementById("images-list");
+  if (!list) return;
+  list.innerHTML = imgs.map(function(i) {
+    return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + i.No_Img + '">' +
+      '<h3 class="font-semibold text-gray-900 img-name cursor-pointer hover:text-indigo-600">' + i.N_Img + '</h3>' +
+      '<button onclick="deleteImg(' + i.No_Img + ')" class="text-red-500 hover:text-red-700 text-sm">&#128465;</button>' +
+    '</div>';
+  }).join("");
+}
+
+async function deleteImg(id) {
+  if (!confirm("Supprimer cette image ?")) return;
+  try {
+    await api("/api/activites/images/" + id, { method: "DELETE" });
+    toast("Image supprimée.");
+    loadImages();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("images-list")) {
+  document.getElementById("images-list").addEventListener("dblclick", function(e) {
+    if (e.target.closest("button")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    var id = parseInt(card.dataset.id);
+    var h3 = card.querySelector("h3.img-name");
+    var current = h3.textContent.trim();
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = current;
+    input.className = "border rounded px-2 py-1 text-sm w-full font-semibold";
+    h3.replaceWith(input);
+    input.focus();
+    input.select();
+    async function save() {
+      var val = input.value.trim() || current;
+      var newH3 = document.createElement("h3");
+      newH3.className = "font-semibold text-gray-900 img-name cursor-pointer hover:text-indigo-600";
+      newH3.textContent = val;
+      input.replaceWith(newH3);
+      if (val !== current) {
+        try { await api("/api/activites/images/" + id, { method: "PUT", body: JSON.stringify({ N_Img: val }) }); }
+        catch (err) { newH3.textContent = current; }
+      }
+    }
+    input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
+    input.addEventListener("blur", save);
+  });
+}
+
+// ======================== LIENS ========================
+if (document.getElementById("create-lien")) {
+  document.getElementById("create-lien").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    var form = new FormData(e.target);
+    try {
+      await api("/api/activites/liens", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+      e.target.reset();
+      toast("Lien créé !");
+      loadLiens();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadLiens() {
+  var liens = await api("/api/activites/liens");
+  var list = document.getElementById("liens-list");
+  if (!list) return;
+  list.innerHTML = liens.map(function(l) {
+    return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + l.No_Lien + '">' +
+      '<div class="flex-1 min-w-0">' +
+        '<h3 class="font-semibold text-gray-900 lien-url cursor-pointer hover:text-indigo-600 truncate">' + l.Link + '</h3>' +
+      '</div>' +
+      '<button onclick="deleteLien(' + l.No_Lien + ')" class="text-red-500 hover:text-red-700 text-sm ml-3 shrink-0">&#128465;</button>' +
+    '</div>';
+  }).join("");
+}
+
+async function deleteLien(id) {
+  if (!confirm("Supprimer ce lien ?")) return;
+  try {
+    await api("/api/activites/liens/" + id, { method: "DELETE" });
+    toast("Lien supprimé.");
+    loadLiens();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("liens-list")) {
+  document.getElementById("liens-list").addEventListener("dblclick", function(e) {
+    if (e.target.closest("button")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    var id = parseInt(card.dataset.id);
+    var h3 = card.querySelector("h3.lien-url");
+    var current = h3.textContent.trim();
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = current;
+    input.className = "border rounded px-2 py-1 text-sm w-full font-semibold";
+    h3.replaceWith(input);
+    input.focus();
+    input.select();
+    async function save() {
+      var val = input.value.trim() || current;
+      var newH3 = document.createElement("h3");
+      newH3.className = "font-semibold text-gray-900 lien-url cursor-pointer hover:text-indigo-600 truncate";
+      newH3.textContent = val;
+      input.replaceWith(newH3);
+      if (val !== current) {
+        try { await api("/api/activites/liens/" + id, { method: "PUT", body: JSON.stringify({ Link: val }) }); }
+        catch (err) { newH3.textContent = current; }
+      }
+    }
+    input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
+    input.addEventListener("blur", save);
+  });
+}
+
+// ======================== REPONSES ========================
+if (document.getElementById("create-reponse")) {
+  document.getElementById("create-reponse").addEventListener("submit", async function(e) {
+    e.preventDefault();
+    var form = new FormData(e.target);
+    try {
+      await api("/api/activites/reponses", { method: "POST", body: JSON.stringify(Object.fromEntries(form)) });
+      e.target.reset();
+      toast("Réponse créée !");
+      loadReponses();
+    } catch (err) { toast(err.message, "error"); }
+  });
+}
+
+async function loadReponses() {
+  var reps = await api("/api/activites/reponses");
+  var list = document.getElementById("reponses-list");
+  if (!list) return;
+  list.innerHTML = reps.map(function(r) {
+    return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + r.No_Rep + '">' +
+      '<h3 class="font-semibold text-gray-900 rep-text cursor-pointer hover:text-indigo-600">' + r.Reponse + '</h3>' +
+      '<button onclick="deleteReponse(' + r.No_Rep + ')" class="text-red-500 hover:text-red-700 text-sm">&#128465;</button>' +
+    '</div>';
+  }).join("");
+}
+
+async function deleteReponse(id) {
+  if (!confirm("Supprimer cette réponse ?")) return;
+  try {
+    await api("/api/activites/reponses/" + id, { method: "DELETE" });
+    toast("Réponse supprimée.");
+    loadReponses();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+if (document.getElementById("reponses-list")) {
+  document.getElementById("reponses-list").addEventListener("dblclick", function(e) {
+    if (e.target.closest("button")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    var id = parseInt(card.dataset.id);
+    var h3 = card.querySelector("h3.rep-text");
+    var current = h3.textContent.trim();
+    var input = document.createElement("input");
+    input.type = "text";
+    input.value = current;
+    input.className = "border rounded px-2 py-1 text-sm w-full font-semibold";
+    h3.replaceWith(input);
+    input.focus();
+    input.select();
+    async function save() {
+      var val = input.value.trim() || current;
+      var newH3 = document.createElement("h3");
+      newH3.className = "font-semibold text-gray-900 rep-text cursor-pointer hover:text-indigo-600";
+      newH3.textContent = val;
+      input.replaceWith(newH3);
+      if (val !== current) {
+        try { await api("/api/activites/reponses/" + id, { method: "PUT", body: JSON.stringify({ Reponse: val }) }); }
+        catch (err) { newH3.textContent = current; }
+      }
+    }
+    input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
+    input.addEventListener("blur", save);
+  });
+}
+
+// ======================== ATTRIBUTIONS ========================
+var allAttribActivites = [];
+var allAttribChapitres = [];
+var allAttribNiveaux = [];
+var allAttribNivRows = [];
+
+if (document.querySelector(".attrib-btn")) {
+  document.querySelectorAll(".attrib-btn").forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      document.querySelectorAll(".attrib-btn").forEach(function(b) { b.className = "attrib-btn bg-white border rounded px-4 py-2 text-sm"; });
+      this.className = "attrib-btn bg-indigo-100 text-indigo-700 rounded px-4 py-2 text-sm font-medium";
+      var name = this.dataset.attrib;
+      document.querySelectorAll(".attrib-panel").forEach(function(p) { p.classList.add("hidden"); });
+      document.getElementById("attrib-" + name).classList.remove("hidden");
+      if (name === "act-chap") setupAttribAC();
+      if (name === "act-niv") setupAttribAN();
+      if (name === "chap-niv") setupAttribCN();
+    });
+  });
+}
+
+async function loadAttributions() {
+  allAttribActivites = await api("/api/activites");
+  allAttribChapitres = await api("/api/activites/chapitres");
+  allAttribNiveaux = await api("/api/activites/niveaux");
+  allAttribNivRows = await api("/api/activites/attrib/chap-niv");
+  setupAttribAC();
+}
+
+// Activite <-> Chapitre (matrix: activities = rows, chapters = columns)
+function setupAttribAC() {
+  renderAttribAC();
+}
+
+function renderAttribAC() {
+  var table = document.getElementById("ac-matrix-table");
+  if (!table) return;
+
+  api("/api/activites/attrib/chap").then(function(chapLinks) {
+    var links = {};
+    chapLinks.forEach(function(l) { links[l.No_dAct + "-" + l.No_dChap] = true; });
+
+    var html = "<thead><tr><th style=\"min-width:200px\"></th>";
+    allAttribChapitres.forEach(function(c) {
+      html += "<th>" + c.Name_Chap + "</th>";
+    });
+    html += "</tr></thead><tbody>";
+
+    allAttribActivites.forEach(function(a) {
+      html += "<tr><td class=\"chap-name\">" + a.Name_Act + "</td>";
+      allAttribChapitres.forEach(function(c) {
+        var checked = links[a.No_Act + "-" + c.No_chap] || false;
+        html += "<td><input type=\"checkbox\" data-act=\"" + a.No_Act + "\" data-chap=\"" + c.No_chap + "\"" + (checked ? " checked" : "") + "></td>";
+      });
+      html += "</tr>";
+    });
+    html += "</tbody>";
+    table.innerHTML = html;
+
+    document.getElementById("attrib-ac-save").onclick = async function() {
+      var matrix = [];
+      var actMap = {};
+      table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
+        var actId = parseInt(cb.dataset.act);
+        var chapId = parseInt(cb.dataset.chap);
+        if (!actMap[actId]) actMap[actId] = [];
+        if (cb.checked) actMap[actId].push(chapId);
+      });
+      for (var aid in actMap) {
+        matrix.push({ activite_id: parseInt(aid), chapitre_ids: actMap[aid] });
+      }
+      await api("/api/activites/attrib/chap", { method: "POST", body: JSON.stringify({ matrix: matrix }) });
+      toast("Attributions enregistrées.");
+      renderAttribAC();
+    };
+  });
+}
+
+// Activite <-> Niveau (matrix: activities = rows, levels = columns)
+function setupAttribAN() {
+  renderAttribAN();
+}
+
+function renderAttribAN() {
+  var table = document.getElementById("an-matrix-table");
+  if (!table) return;
+
+  // Build a set of (activite_id, niveau_id) from existing Act_Attrib rows
+  var assign = {};
+  allAttribNivRows.forEach(function(anRow) {
+    // Find all Act_Attrib entries that reference this Attrib_Niv row
+    // We need to load this from the API
+  });
+
+  // Load full attrib/niveau data
+  api("/api/activites/attrib/niveau").then(function(actLinks) {
+    var links = {};  // "actId-nivId" -> true
+    actLinks.forEach(function(al) {
+      if (al.No_dNiv !== undefined) {
+        links[al.No_Act_Attrib + "-" + al.No_dNiv] = true;
+      }
+    });
+
+    var html = "<thead><tr><th style=\"min-width:200px\"></th>";
+    allAttribNiveaux.forEach(function(n) {
+      html += "<th>" + n.Name_Niv + "</th>";
+    });
+    html += "</tr></thead><tbody>";
+
+    allAttribActivites.forEach(function(a) {
+      html += "<tr><td class=\"chap-name\">" + a.Name_Act + "</td>";
+      allAttribNiveaux.forEach(function(n) {
+        var checked = links[a.No_Act + "-" + n.No_Niv] || false;
+        html += "<td><input type=\"checkbox\" data-act=\"" + a.No_Act + "\" data-niv=\"" + n.No_Niv + "\"" + (checked ? " checked" : "") + "></td>";
+      });
+      html += "</tr>";
+    });
+    html += "</tbody>";
+    table.innerHTML = html;
+
+    document.getElementById("attrib-an-save").onclick = async function() {
+      var matrix = [];
+      var actMap = {};
+      table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
+        var actId = parseInt(cb.dataset.act);
+        var nivId = parseInt(cb.dataset.niv);
+        if (!actMap[actId]) actMap[actId] = [];
+        if (cb.checked) actMap[actId].push(nivId);
+      });
+      for (var aid in actMap) {
+        matrix.push({ activite_id: parseInt(aid), niveau_ids: actMap[aid] });
+      }
+      await api("/api/activites/attrib/niveau", { method: "POST", body: JSON.stringify({ matrix: matrix }) });
+      toast("Attributions enregistrées.");
+      renderAttribAN();
+    };
+  });
+}
+
+// Chapitre <-> Niveau (matrix: chapters = rows, levels = columns)
+function setupAttribCN() {
+  renderAttribCN();
+}
+
+function renderAttribCN() {
+  var table = document.getElementById("cn-matrix-table");
+  if (!table) return;
+
+  var assign = {};
+  allAttribNivRows.forEach(function(r) {
+    if (!assign[r.No_dChap]) assign[r.No_dChap] = [];
+    assign[r.No_dChap].push(r.No_dNiv);
+  });
+
+  var html = "<thead><tr><th></th>";
+  allAttribNiveaux.forEach(function(n) {
+    html += "<th>" + n.Name_Niv + "</th>";
+  });
+  html += "</tr></thead><tbody>";
+
+  allAttribChapitres.forEach(function(c) {
+    html += "<tr><td class=\"chap-name\">" + c.Name_Chap + "</td>";
+    var chapAssign = assign[c.No_chap] || [];
+    allAttribNiveaux.forEach(function(n) {
+      var checked = chapAssign.indexOf(n.No_Niv) !== -1;
+      html += "<td><input type=\"checkbox\" data-chap=\"" + c.No_chap + "\" data-niv=\"" + n.No_Niv + "\"" + (checked ? " checked" : "") + "></td>";
+    });
+    html += "</tr>";
+  });
+  html += "</tbody>";
+  table.innerHTML = html;
+
+  document.getElementById("attrib-cn-save").onclick = async function() {
+    var matrix = [];
+    var chapMap = {};
+    table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
+      var chapId = parseInt(cb.dataset.chap);
+      var nivId = parseInt(cb.dataset.niv);
+      if (!chapMap[chapId]) chapMap[chapId] = [];
+      if (cb.checked) chapMap[chapId].push(nivId);
+    });
+    for (var cid in chapMap) {
+      matrix.push({ chapitre_id: parseInt(cid), niveau_ids: chapMap[cid] });
+    }
+    await api("/api/activites/attrib/chap-niv", { method: "POST", body: JSON.stringify({ matrix: matrix }) });
+    toast("Attributions enregistrées.");
+    allAttribNivRows = await api("/api/activites/attrib/chap-niv");
+    renderAttribCN();
+  };
+}
+
+
+// ======================== POSITIONNEMENT ========================
+var posDragging = false;
+var posDragId = null;
+var posOffsetX = 0;
+var posOffsetY = 0;
+var posLoading = false;
+
+function setupPositionnement() {
+  var sel = document.getElementById("pos-act-select");
+  if (!sel) return;
+
+  // Remove previous listener by cloning
+  var newSel = sel.cloneNode(true);
+  sel.parentNode.replaceChild(newSel, sel);
+  newSel.innerHTML = '<option value="">-- Choisir une activité --</option>';
+
+  api("/api/activites/positionnement/activities").then(function(acts) {
+    acts.forEach(function(a) {
+      var opt = document.createElement("option");
+      opt.value = a.No_Act;
+      opt.textContent = a.Name_Act;
+      newSel.appendChild(opt);
+    });
+  });
+
+  newSel.addEventListener("change", function() {
+    var actId = parseInt(this.value);
+    if (!actId || isNaN(actId)) {
+      document.getElementById("pos-area").innerHTML = '<p class="text-gray-400 italic text-center">Sélectionnez une activité pour commencer.</p>';
+      return;
+    }
+    if (posLoading) return;
+    posLoading = true;
+    document.getElementById("pos-loading").classList.remove("hidden");
+    document.getElementById("pos-area").innerHTML = '';
+
+    api("/api/activites/positionnement/" + actId).then(function(data) {
+      document.getElementById("pos-loading").classList.add("hidden");
+      posLoading = false;
+      renderPositionnement(data);
+    }).catch(function(err) {
+      document.getElementById("pos-loading").classList.add("hidden");
+      posLoading = false;
+      document.getElementById("pos-area").innerHTML = '<p class="text-red-400 italic text-center">Erreur: ' + (err.message || 'Chargement impossible') + '</p>';
+      console.error("Positionnement error:", err);
+    });
+  });
+}
+
+function renderPositionnement(data) {
+  var area = document.getElementById("pos-area");
+  var html = '<div style="text-align:center;margin-bottom:16px">' +
+    '<h3 class="text-lg font-semibold text-gray-800">' + data.name + '</h3>' +
+    '</div>' +
+    '<div class="pos-container">' +
+    '<img src="' + data.img_url + '" alt="' + data.name + '" id="pos-img" />';
+
+  data.labels.forEach(function(l) {
+    html += '<div class="pos-label" data-id="' + l.id + '" style="left:' + l.x + 'px;top:' + l.y + 'px;">' + l.text + '</div>';
+  });
+
+  html += '</div>' +
+    '<div style="text-align:center;margin-top:20px">' +
+    '<button id="pos-save-btn" class="bg-indigo-600 text-white rounded px-6 py-2 hover:bg-indigo-700 transition text-sm">Enregistrer les positions</button>' +
+    '</div>';
+
+  area.innerHTML = html;
+
+  // Attach drag events
+  area.querySelectorAll(".pos-label").forEach(function(el) {
+    el.addEventListener("mousedown", function(e) {
+      e.preventDefault();
+      posDragging = true;
+      posDragId = this.dataset.id;
+      var rect = this.getBoundingClientRect();
+      posOffsetX = e.clientX - rect.left;
+      posOffsetY = e.clientY - rect.top;
+      this.classList.add("dragging");
+    });
+  });
+
+  document.getElementById("pos-save-btn").addEventListener("click", function() {
+    var positions = [];
+    area.querySelectorAll(".pos-label").forEach(function(el) {
+      positions.push({
+        id: parseInt(el.dataset.id),
+        x: parseInt(el.style.left) || 0,
+        y: parseInt(el.style.top) || 0
+      });
+    });
+    api("/api/activites/positionnement", { method: "POST", body: JSON.stringify(positions) })
+      .then(function() { toast("Positions enregistrées."); })
+      .catch(function(err) { toast(err.message, "error"); });
+  });
+}
+
+// Global mouse handlers for positionnement drag
+document.addEventListener("mousemove", function(e) {
+  if (!posDragging || !posDragId) return;
+  var el = document.querySelector('.pos-label[data-id="' + posDragId + '"]');
+  if (!el) return;
+  var container = el.closest(".pos-container");
+  if (!container) return;
+  var rect = container.getBoundingClientRect();
+  var x = e.clientX - rect.left - posOffsetX;
+  var y = e.clientY - rect.top - posOffsetY;
+  el.style.left = Math.max(0, x) + "px";
+  el.style.top = Math.max(0, y) + "px";
+});
+
+document.addEventListener("mouseup", function() {
+  if (posDragging) {
+    var el = document.querySelector('.pos-label[data-id="' + posDragId + '"]');
+    if (el) el.classList.remove("dragging");
+    posDragging = false;
+    posDragId = null;
+  }
+});
+
 
 async function deleteEleve(id) {
   if (!confirm("Supprimer cet élève ?")) return;
