@@ -1136,9 +1136,11 @@ function setupAttribAC() {
 
 function renderAttribAC() {
   var table = document.getElementById("ac-matrix-table");
-  if (!table) return;
+  if (!table || table._loading) return;
+  table._loading = true;
 
   api("/api/activites/attrib/chap").then(function(chapLinks) {
+    table._loading = false;
     var links = {};
     chapLinks.forEach(function(l) { links[l.No_dAct + "-" + l.No_dChap] = true; });
 
@@ -1159,22 +1161,20 @@ function renderAttribAC() {
     html += "</tbody>";
     table.innerHTML = html;
 
-    document.getElementById("attrib-ac-save").onclick = async function() {
-      var matrix = [];
-      var actMap = {};
-      table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
-        var actId = parseInt(cb.dataset.act);
-        var chapId = parseInt(cb.dataset.chap);
-        if (!actMap[actId]) actMap[actId] = [];
-        if (cb.checked) actMap[actId].push(chapId);
+    // Auto-save on checkbox change
+    table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
+      cb.addEventListener("change", function() {
+        var actId = parseInt(this.dataset.act);
+        var checked = [];
+        table.querySelectorAll("input[type=checkbox][data-act=\"" + actId + "\"]:checked").forEach(function(c) {
+          checked.push(parseInt(c.dataset.chap));
+        });
+        api("/api/activites/attrib/chap", {
+          method: "POST",
+          body: JSON.stringify({ activite_id: actId, chapitre_ids: checked })
+        }).catch(function() { toast("Erreur attribution", "error"); });
       });
-      for (var aid in actMap) {
-        matrix.push({ activite_id: parseInt(aid), chapitre_ids: actMap[aid] });
-      }
-      await api("/api/activites/attrib/chap", { method: "POST", body: JSON.stringify({ matrix: matrix }) });
-      toast("Attributions enregistrées.");
-      renderAttribAC();
-    };
+    });
   });
 }
 
@@ -1185,18 +1185,12 @@ function setupAttribAN() {
 
 function renderAttribAN() {
   var table = document.getElementById("an-matrix-table");
-  if (!table) return;
+  if (!table || table._loading) return;
+  table._loading = true;
 
-  // Build a set of (activite_id, niveau_id) from existing Act_Attrib rows
-  var assign = {};
-  allAttribNivRows.forEach(function(anRow) {
-    // Find all Act_Attrib entries that reference this Attrib_Niv row
-    // We need to load this from the API
-  });
-
-  // Load full attrib/niveau data
   api("/api/activites/attrib/niveau").then(function(actLinks) {
-    var links = {};  // "actId-nivId" -> true
+    table._loading = false;
+    var links = {};
     actLinks.forEach(function(al) {
       if (al.No_dNiv !== undefined) {
         links[al.No_Act_Attrib + "-" + al.No_dNiv] = true;
@@ -1220,22 +1214,19 @@ function renderAttribAN() {
     html += "</tbody>";
     table.innerHTML = html;
 
-    document.getElementById("attrib-an-save").onclick = async function() {
-      var matrix = [];
-      var actMap = {};
-      table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
-        var actId = parseInt(cb.dataset.act);
-        var nivId = parseInt(cb.dataset.niv);
-        if (!actMap[actId]) actMap[actId] = [];
-        if (cb.checked) actMap[actId].push(nivId);
+    table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
+      cb.addEventListener("change", function() {
+        var actId = parseInt(this.dataset.act);
+        var checked = [];
+        table.querySelectorAll("input[type=checkbox][data-act=\"" + actId + "\"]:checked").forEach(function(c) {
+          checked.push(parseInt(c.dataset.niv));
+        });
+        api("/api/activites/attrib/niveau", {
+          method: "POST",
+          body: JSON.stringify({ activite_id: actId, attrib_niv_ids: checked })
+        }).catch(function() { toast("Erreur attribution", "error"); });
       });
-      for (var aid in actMap) {
-        matrix.push({ activite_id: parseInt(aid), niveau_ids: actMap[aid] });
-      }
-      await api("/api/activites/attrib/niveau", { method: "POST", body: JSON.stringify({ matrix: matrix }) });
-      toast("Attributions enregistrées.");
-      renderAttribAN();
-    };
+    });
   });
 }
 
@@ -1246,19 +1237,20 @@ function setupAttribCN() {
 
 function renderAttribCN() {
   var table = document.getElementById("cn-matrix-table");
-  if (!table) return;
-
-  var assign = {};
-  allAttribNivRows.forEach(function(r) {
-    if (!assign[r.No_dChap]) assign[r.No_dChap] = [];
-    assign[r.No_dChap].push(r.No_dNiv);
-  });
+  if (!table || table._loading) return;
+  table._loading = true;
 
   var html = "<thead><tr><th></th>";
   allAttribNiveaux.forEach(function(n) {
     html += "<th>" + n.Name_Niv + "</th>";
   });
   html += "</tr></thead><tbody>";
+
+  var assign = {};
+  allAttribNivRows.forEach(function(r) {
+    if (!assign[r.No_dChap]) assign[r.No_dChap] = [];
+    assign[r.No_dChap].push(r.No_dNiv);
+  });
 
   allAttribChapitres.forEach(function(c) {
     html += "<tr><td class=\"chap-name\">" + c.Name_Chap + "</td>";
@@ -1271,24 +1263,23 @@ function renderAttribCN() {
   });
   html += "</tbody>";
   table.innerHTML = html;
+  table._loading = false;
 
-  document.getElementById("attrib-cn-save").onclick = async function() {
-    var matrix = [];
-    var chapMap = {};
-    table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
-      var chapId = parseInt(cb.dataset.chap);
-      var nivId = parseInt(cb.dataset.niv);
-      if (!chapMap[chapId]) chapMap[chapId] = [];
-      if (cb.checked) chapMap[chapId].push(nivId);
+  table.querySelectorAll("input[type=checkbox]").forEach(function(cb) {
+    cb.addEventListener("change", function() {
+      var chapId = parseInt(this.dataset.chap);
+      var checked = [];
+      table.querySelectorAll("input[type=checkbox][data-chap=\"" + chapId + "\"]:checked").forEach(function(c) {
+        checked.push(parseInt(c.dataset.niv));
+      });
+      api("/api/activites/attrib/chap-niv", {
+        method: "POST",
+        body: JSON.stringify({ chapitre_id: chapId, niveau_ids: checked })
+      }).then(function() {
+        api("/api/activites/attrib/chap-niv").then(function(rows) { allAttribNivRows = rows; });
+      }).catch(function() { toast("Erreur attribution", "error"); });
     });
-    for (var cid in chapMap) {
-      matrix.push({ chapitre_id: parseInt(cid), niveau_ids: chapMap[cid] });
-    }
-    await api("/api/activites/attrib/chap-niv", { method: "POST", body: JSON.stringify({ matrix: matrix }) });
-    toast("Attributions enregistrées.");
-    allAttribNivRows = await api("/api/activites/attrib/chap-niv");
-    renderAttribCN();
-  };
+  });
 }
 
 
