@@ -346,6 +346,10 @@ def create_app(testing=False, run_migrations=True):
     def activites_page():
         return render_template("activites.html")
 
+    @app.route("/positionnement")
+    def positionnement_page():
+        return render_template("positionnement.html")
+
     @app.route("/dashboard")
     def dashboard():
         return render_template("dashboard.html")

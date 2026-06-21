@@ -628,7 +628,7 @@ if (document.querySelector(".subtab")) {
       if (name === "liens") loadLiens();
       if (name === "reponses") loadReponses();
       if (name === "attributions") loadAttributions();
-      if (name === "positionnement") setupPositionnement();
+      if (name === "positionnement") { window.open(API_BASE + "/positionnement", "_blank"); return; }
       if (name === "listes") setupListes();
     });
   });
@@ -1283,124 +1283,6 @@ function renderAttribCN() {
 }
 
 
-// ======================== POSITIONNEMENT ========================
-var posDragging = false;
-var posDragId = null;
-var posOffsetX = 0;
-var posOffsetY = 0;
-var posLoading = false;
-
-function setupPositionnement() {
-  var sel = document.getElementById("pos-act-select");
-  if (!sel) return;
-
-  // Remove previous listener by cloning
-  var newSel = sel.cloneNode(true);
-  sel.parentNode.replaceChild(newSel, sel);
-  newSel.innerHTML = '<option value="">-- Choisir une activité --</option>';
-
-  api("/api/activites/positionnement/activities").then(function(acts) {
-    acts.forEach(function(a) {
-      var opt = document.createElement("option");
-      opt.value = a.No_Act;
-      opt.textContent = a.Name_Act;
-      newSel.appendChild(opt);
-    });
-  });
-
-  newSel.addEventListener("change", function() {
-    var actId = parseInt(this.value);
-    if (!actId || isNaN(actId)) {
-      document.getElementById("pos-area").innerHTML = '<p class="text-gray-400 italic text-center">Sélectionnez une activité pour commencer.</p>';
-      return;
-    }
-    if (posLoading) return;
-    posLoading = true;
-    document.getElementById("pos-loading").classList.remove("hidden");
-    document.getElementById("pos-area").innerHTML = '';
-
-    api("/api/activites/positionnement/" + actId).then(function(data) {
-      document.getElementById("pos-loading").classList.add("hidden");
-      posLoading = false;
-      renderPositionnement(data);
-    }).catch(function(err) {
-      document.getElementById("pos-loading").classList.add("hidden");
-      posLoading = false;
-      document.getElementById("pos-area").innerHTML = '<p class="text-red-400 italic text-center">Erreur: ' + (err.message || 'Chargement impossible') + '</p>';
-      console.error("Positionnement error:", err);
-    });
-  });
-}
-
-function renderPositionnement(data) {
-  var area = document.getElementById("pos-area");
-  var html = '<div style="text-align:center;margin-bottom:16px">' +
-    '<h3 class="text-lg font-semibold text-gray-800">' + data.name + '</h3>' +
-    '</div>' +
-    '<div class="pos-container">' +
-    '<img src="' + data.img_url + '" alt="' + data.name + '" id="pos-img" />';
-
-  data.labels.forEach(function(l) {
-    html += '<div class="pos-label" data-id="' + l.id + '" style="left:' + l.x + 'px;top:' + l.y + 'px;">' + l.text + '</div>';
-  });
-
-  html += '</div>' +
-    '<div style="text-align:center;margin-top:20px">' +
-    '<button id="pos-save-btn" class="bg-indigo-600 text-white rounded px-6 py-2 hover:bg-indigo-700 transition text-sm">Enregistrer les positions</button>' +
-    '</div>';
-
-  area.innerHTML = html;
-
-  // Attach drag events
-  area.querySelectorAll(".pos-label").forEach(function(el) {
-    el.addEventListener("mousedown", function(e) {
-      e.preventDefault();
-      posDragging = true;
-      posDragId = this.dataset.id;
-      var rect = this.getBoundingClientRect();
-      posOffsetX = e.clientX - rect.left;
-      posOffsetY = e.clientY - rect.top;
-      this.classList.add("dragging");
-    });
-  });
-
-  document.getElementById("pos-save-btn").addEventListener("click", function() {
-    var positions = [];
-    area.querySelectorAll(".pos-label").forEach(function(el) {
-      positions.push({
-        id: parseInt(el.dataset.id),
-        x: parseInt(el.style.left) || 0,
-        y: parseInt(el.style.top) || 0
-      });
-    });
-    api("/api/activites/positionnement", { method: "POST", body: JSON.stringify(positions) })
-      .then(function() { toast("Positions enregistrées."); })
-      .catch(function(err) { toast(err.message, "error"); });
-  });
-}
-
-// Global mouse handlers for positionnement drag
-document.addEventListener("mousemove", function(e) {
-  if (!posDragging || !posDragId) return;
-  var el = document.querySelector('.pos-label[data-id="' + posDragId + '"]');
-  if (!el) return;
-  var container = el.closest(".pos-container");
-  if (!container) return;
-  var rect = container.getBoundingClientRect();
-  var x = e.clientX - rect.left - posOffsetX;
-  var y = e.clientY - rect.top - posOffsetY;
-  el.style.left = Math.max(0, x) + "px";
-  el.style.top = Math.max(0, y) + "px";
-});
-
-document.addEventListener("mouseup", function() {
-  if (posDragging) {
-    var el = document.querySelector('.pos-label[data-id="' + posDragId + '"]');
-    if (el) el.classList.remove("dragging");
-    posDragging = false;
-    posDragId = null;
-  }
-});
 
 
 // ======================== LISTES ========================

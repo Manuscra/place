@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Positionnement - MyEnt</title>
+    <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, Helvetica, sans-serif; background: #ccf; overflow: auto; }
+        #toolbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 1000;
+            background: rgba(255,255,255,0.95); backdrop-filter: blur(4px);
+            padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+            border-bottom: 1px solid #d1d5db; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #pos-act-select { padding: 6px 12px; border-radius: 6px; border: 1px solid #d1d5db; font-size: 14px; min-width: 250px; }
+        #pos-save-btn { padding: 6px 20px; background: #4f46e5; color: #fff; border: none; border-radius: 6px; font-size: 14px; cursor: pointer; }
+        #pos-save-btn:hover { background: #4338ca; }
+        #pos-area { margin-top: 52px; position: relative; min-height: 600px; }
+        .pos-label {
+            position: absolute; font-size: 9pt; font-family: Arial, sans-serif; color: #000;
+            width: 110px; padding: 2px 4px; border: 1px solid #6366f1;
+            background: rgba(255,255,255,0.92); border-radius: 4px; cursor: grab;
+            user-select: none; z-index: 10; text-align: center;
+        }
+        .pos-label:active { cursor: grabbing; }
+        .pos-label.dragging { opacity: 0.7; z-index: 20; }
+        #pos-img { display: block; position: absolute; left: 50px; top: 10px; z-index: 1; }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <label class="text-sm font-medium text-gray-700">Activité :</label>
+        <select id="pos-act-select">
+            <option value="">-- Choisir une activité --</option>
+        </select>
+        <span id="pos-loading" class="text-sm text-gray-400 hidden">Chargement...</span>
+        <button id="pos-save-btn" class="hidden">Enregistrer les positions</button>
+        <span id="pos-activity-name" class="text-sm font-semibold text-indigo-700 ml-auto"></span>
+    </div>
+    <div id="pos-area">
+        <p class="text-gray-500 italic text-center p-12">Sélectionnez une activité pour commencer.</p>
+    </div>
+
+    <script>var API_BASE = "{{ url_for('static', filename='x') }}".split("/static")[0];</script>
+    <script>
+    var posDragging = false;
+    var posDragId = null;
+    var posOffsetX = 0;
+    var posOffsetY = 0;
+    var posLabels = [];
+
+    async function api2(url, opts) {
+        opts = opts || {};
+        var res = await fetch(API_BASE + url, {
+            headers: { "Content-Type": "application/json" },
+            method: opts.method || "GET",
+            body: opts.body || undefined,
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        var text = await res.text();
+        return JSON.parse(text);
+    }
+
+    function loadActivities() {
+        api2("/api/activites/positionnement/activities").then(function(acts) {
+            var sel = document.getElementById("pos-act-select");
+            acts.forEach(function(a) {
+                var opt = document.createElement("option");
+                opt.value = a.No_Act;
+                opt.textContent = a.Name_Act;
+                sel.appendChild(opt);
+            });
+        });
+    }
+
+    document.getElementById("pos-act-select").addEventListener("change", function() {
+        var actId = parseInt(this.value);
+        if (!actId || isNaN(actId)) {
+            document.getElementById("pos-area").innerHTML = '<p class="text-gray-500 italic text-center p-12">Sélectionnez une activité pour commencer.</p>';
+            document.getElementById("pos-save-btn").classList.add("hidden");
+            document.getElementById("pos-activity-name").textContent = "";
+            return;
+        }
+        document.getElementById("pos-loading").classList.remove("hidden");
+        document.getElementById("pos-area").innerHTML = "";
+
+        api2("/api/activites/positionnement/" + actId).then(function(data) {
+            document.getElementById("pos-loading").classList.add("hidden");
+            document.getElementById("pos-activity-name").textContent = data.name;
+            document.getElementById("pos-save-btn").classList.remove("hidden");
+            renderPositionnement(data);
+        }).catch(function(err) {
+            document.getElementById("pos-loading").classList.add("hidden");
+            document.getElementById("pos-area").innerHTML = '<p class="text-red-500 italic text-center p-12">Erreur: ' + err.message + '</p>';
+        });
+    });
+
+    function renderPositionnement(data) {
+        posLabels = [];
+        var area = document.getElementById("pos-area");
+        area.innerHTML = '<img src="' + data.img_url + '" alt="' + data.name + '" id="pos-img" />';
+
+        data.labels.forEach(function(l) {
+            var div = document.createElement("div");
+            div.className = "pos-label";
+            div.dataset.id = l.id;
+            div.style.left = l.x + "px";
+            div.style.top = l.y + "px";
+            div.textContent = l.text;
+            div.addEventListener("mousedown", function(e) {
+                e.preventDefault();
+                posDragging = true;
+                posDragId = this.dataset.id;
+                var rect = this.getBoundingClientRect();
+                posOffsetX = e.clientX - rect.left;
+                posOffsetY = e.clientY - rect.top;
+                this.classList.add("dragging");
+            });
+            area.appendChild(div);
+            posLabels.push({ id: l.id, x: l.x, y: l.y });
+        });
+    }
+
+    document.addEventListener("mousemove", function(e) {
+        if (!posDragging || !posDragId) return;
+        var el = document.querySelector('.pos-label[data-id="' + posDragId + '"]');
+        if (!el) return;
+        var img = document.getElementById("pos-img");
+        var imgRect = img.getBoundingClientRect();
+        var x = e.clientX - imgRect.left - posOffsetX;
+        var y = e.clientY - imgRect.top - posOffsetY;
+        el.style.left = Math.max(0, x) + "px";
+        el.style.top = Math.max(0, y) + "px";
+    });
+
+    document.addEventListener("mouseup", function() {
+        if (posDragging) {
+            var el = document.querySelector('.pos-label[data-id="' + posDragId + '"]');
+            if (el) el.classList.remove("dragging");
+            posDragging = false;
+            posDragId = null;
+        }
+    });
+
+    document.getElementById("pos-save-btn").addEventListener("click", function() {
+        var positions = [];
+        document.querySelectorAll(".pos-label").forEach(function(el) {
+            positions.push({
+                id: parseInt(el.dataset.id),
+                x: parseInt(el.style.left) || 0,
+                y: parseInt(el.style.top) || 0
+            });
+        });
+        api2("/api/activites/positionnement", { method: "POST", body: JSON.stringify(positions) })
+            .then(function() { alert("Positions enregistrées."); })
+            .catch(function(err) { alert("Erreur: " + err.message); });
+    });
+
+    loadActivities();
+    </script>
+</body>
+</html>
