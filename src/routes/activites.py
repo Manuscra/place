@@ -38,7 +38,7 @@ def _enrich_activite(act):
 
 @activites_bp.route("", methods=["GET"])
 def list_activites():
-    activites = Activite.query.order_by(Activite.No_Act).all()
+    activites = Activite.query.order_by(Activite.Type_Act, Activite.Name_Act).all()
     return jsonify([_enrich_activite(a) for a in activites])
 
 
@@ -252,7 +252,7 @@ def delete_niveau(niv_id):
 
 @activites_bp.route("/reponses", methods=["GET"])
 def list_reponses():
-    reps = Reponse.query.order_by(Reponse.No_Rep).all()
+    reps = Reponse.query.order_by(Reponse.Reponse).all()
     return jsonify([ReponseOut.model_validate(r).model_dump() for r in reps])
 
 
