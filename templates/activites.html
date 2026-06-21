@@ -40,6 +40,7 @@
   <span class="subtab" data-tab="reponses">Réponses</span>
   <span class="subtab" data-tab="attributions">Attributions</span>
   <span class="subtab" data-tab="positionnement">Positionnement</span>
+  <span class="subtab" data-tab="listes">Listes</span>
 </div>
 
 <!-- Tab: Activités -->
@@ -160,5 +161,23 @@
   <div id="pos-area" class="bg-white rounded-lg shadow p-4 overflow-auto" style="min-height: 500px;">
     <p class="text-gray-400 italic text-center">Sélectionnez une activité pour commencer.</p>
   </div>
+</div>
+
+<!-- Tab: Listes -->
+<div id="tab-listes" class="tab-content hidden">
+  <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <div class="flex items-center gap-4 mb-4">
+      <label class="text-sm font-medium">Activité Quizz :</label>
+      <select id="listes-act-select" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 min-w-[250px]">
+        <option value="">-- Choisir une activité --</option>
+      </select>
+    </div>
+    <div id="listes-toolbar" class="hidden flex items-center gap-3">
+      <button id="listes-add-btn" class="bg-indigo-600 text-white rounded px-3 py-1 text-sm hover:bg-indigo-700 transition">+ Nouvelle liste</button>
+      <button id="listes-save-btn" class="bg-green-600 text-white rounded px-4 py-1 text-sm hover:bg-green-700 transition">Enregistrer</button>
+      <button id="listes-delete-btn" class="text-red-500 hover:text-red-700 text-sm ml-auto">Supprimer tout</button>
+    </div>
+  </div>
+  <div id="listes-area"></div>
 </div>
 {% endblock %}

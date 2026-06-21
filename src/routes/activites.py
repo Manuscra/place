@@ -613,3 +613,105 @@ def list_quiz_activites():
     """Return all quiz-type activities for the positionnement dropdown."""
     acts = Activite.query.filter_by(Type_Act=1).order_by(Activite.Name_Act).all()
     return jsonify([{"No_Act": a.No_Act, "Name_Act": a.Name_Act} for a in acts])
+
+
+# =============================================================================
+# Listes : response lists for quiz activities (quiz builder)
+# =============================================================================
+
+@activites_bp.route("/listes/<int:act_id>", methods=["GET"])
+def get_listes(act_id):
+    """Return existing lists + responses for an activity, grouped by Num_Liste_Act."""
+    act = db.session.get(Activite, act_id)
+    if not act:
+        return jsonify({"error": "Activite not found"}), 404
+
+    rows = Liste.query.filter_by(Act_liste=act_id).order_by(Liste.Num_Liste_Act, Liste.No_Liste).all()
+
+    lists = {}
+    for r in rows:
+        key = r.Num_Liste_Act
+        if key not in lists:
+            lists[key] = []
+        rep = db.session.get(Reponse, r.Num_Rep)
+        etiqs = Etiquette.query.filter_by(No_liste=r.No_Liste).all()
+        lists[key].append({
+            "No_Liste": r.No_Liste,
+            "No_Rep": r.Num_Rep,
+            "Reponse": rep.Reponse if rep else "?",
+            "nb_etiq": len(etiqs) or 1,
+        })
+
+    result = []
+    for k in sorted(lists.keys()):
+        result.append({"num": k, "reponses": lists[k]})
+
+    return jsonify({
+        "No_Act": act.No_Act,
+        "Name_Act": act.Name_Act,
+        "lists": result,
+    })
+
+
+@activites_bp.route("/listes", methods=["POST"])
+def save_listes():
+    """
+    Save lists + etiquettes for an activity.
+    Body: {act_id, lists: [{reponses: [{No_Rep, nb_etiq}]}]}
+    Each entry in 'lists' becomes a Num_Liste_Act group.
+    """
+    data = request.get_json(silent=True) or {}
+    act_id = data.get("act_id")
+    if not act_id:
+        return jsonify({"error": "act_id required"}), 400
+
+    act = db.session.get(Activite, act_id)
+    if not act:
+        return jsonify({"error": "Activite not found"}), 404
+
+    # Delete existing lists + etiquettes for this activity
+    old_lists = Liste.query.filter_by(Act_liste=act_id).all()
+    old_ids = [lst.No_Liste for lst in old_lists]
+    if old_ids:
+        Etiquette.query.filter(Etiquette.No_liste.in_(old_ids)).delete(synchronize_session=False)
+        Liste.query.filter_by(Act_liste=act_id).delete()
+
+    # Get global max Num_Liste_Base (or start at 0 if empty)
+    max_base = db.session.query(db.func.max(Liste.Num_Liste_Base)).scalar() or -1
+    next_base = max_base + 1
+
+    lists_data = data.get("lists", [])
+    for i, lst in enumerate(lists_data):
+        base_num = next_base + i
+        for rep in lst.get("reponses", []):
+            new_liste = Liste(
+                Act_liste=act_id,
+                Num_Liste_Base=base_num,
+                Num_Liste_Act=i,
+                Num_Rep=rep["No_Rep"],
+            )
+            db.session.add(new_liste)
+            db.session.flush()  # get No_Liste
+
+            nb = max(1, int(rep.get("nb_etiq", 1)))
+            for k in range(nb):
+                db.session.add(Etiquette(
+                    x=50,
+                    y=k * 30,
+                    No_liste=new_liste.No_Liste,
+                ))
+
+    db.session.commit()
+    return jsonify({"message": "Listes saved"}), 200
+
+
+@activites_bp.route("/listes/<int:act_id>", methods=["DELETE"])
+def delete_listes(act_id):
+    """Delete all lists + etiquettes for an activity."""
+    old_lists = Liste.query.filter_by(Act_liste=act_id).all()
+    old_ids = [lst.No_Liste for lst in old_lists]
+    if old_ids:
+        Etiquette.query.filter(Etiquette.No_liste.in_(old_ids)).delete(synchronize_session=False)
+        Liste.query.filter_by(Act_liste=act_id).delete()
+        db.session.commit()
+    return jsonify({"message": "Listes deleted"}), 200

@@ -629,6 +629,7 @@ if (document.querySelector(".subtab")) {
       if (name === "reponses") loadReponses();
       if (name === "attributions") loadAttributions();
       if (name === "positionnement") setupPositionnement();
+      if (name === "listes") setupListes();
     });
   });
 }
@@ -1409,6 +1410,167 @@ document.addEventListener("mouseup", function() {
     posDragId = null;
   }
 });
+
+
+// ======================== LISTES ========================
+var listesData = { act_id: 0, lists: [] };
+var listesCount = 0;
+
+function setupListes() {
+  var sel = document.getElementById("listes-act-select");
+  if (!sel || sel._loaded) return;
+  sel._loaded = true;
+
+  api("/api/activites/positionnement/activities").then(function(acts) {
+    acts.forEach(function(a) {
+      var opt = document.createElement("option");
+      opt.value = a.No_Act;
+      opt.textContent = a.Name_Act;
+      sel.appendChild(opt);
+    });
+  });
+
+  sel.addEventListener("change", function() {
+    var actId = parseInt(this.value);
+    listesData.act_id = actId;
+    listesData.lists = [];
+    listesCount = 0;
+    if (!actId || isNaN(actId)) {
+      document.getElementById("listes-toolbar").classList.add("hidden");
+      document.getElementById("listes-area").innerHTML = "";
+      return;
+    }
+    document.getElementById("listes-toolbar").classList.remove("hidden");
+    api("/api/activites/listes/" + actId).then(function(data) {
+      listesCount = data.lists.length;
+      listesData.lists = data.lists.map(function(lst) {
+        return { reponses: lst.reponses.map(function(r) { return { No_Rep: r.No_Rep, nb_etiq: r.nb_etiq }; }) };
+      });
+      renderListes();
+    }).catch(function(err) {
+      listesCount = 0;
+      listesData.lists = [];
+      renderListes();
+    });
+  });
+}
+
+function renderListes() {
+  var area = document.getElementById("listes-area");
+  if (listesCount === 0) {
+    area.innerHTML = '<p class="text-gray-400 italic text-center p-4">Aucune liste. Cliquez "+ Nouvelle liste".</p>';
+    return;
+  }
+  var html = "";
+  for (var i = 0; i < listesCount; i++) {
+    html += '<div class="bg-white rounded-lg shadow p-4 mb-3" data-liste="' + i + '">' +
+      '<div class="flex items-center justify-between mb-2">' +
+        '<h4 class="font-semibold text-gray-700">Liste n°' + (i + 1) + '</h4>' +
+        '<button onclick="deleteListe(' + i + ')" class="text-red-500 hover:text-red-700 text-xs">Supprimer</button>' +
+      '</div>' +
+      '<div id="liste-' + i + '-reps" class="space-y-2 mb-3"></div>' +
+      '<select onchange="addRepToListe(' + i + ', this)" class="border rounded px-2 py-1 text-sm w-full">' +
+        '<option value="">+ Ajouter une réponse</option>' +
+      '</select>' +
+    '</div>';
+  }
+  area.innerHTML = html;
+
+  api("/api/activites/reponses").then(function(reps) {
+    for (var i = 0; i < listesCount; i++) {
+      var sel = document.querySelector('#liste-' + i + '-reps').nextElementSibling;
+      if (!sel) continue;
+      reps.forEach(function(r) {
+        var opt = document.createElement("option");
+        opt.value = r.No_Rep;
+        opt.textContent = r.Reponse;
+        sel.appendChild(opt);
+      });
+      renderListeReps(i, reps);
+    }
+  });
+}
+
+function renderListeReps(idx, allReps) {
+  var container = document.getElementById("liste-" + idx + "-reps");
+  if (!container) return;
+  var reps = (listesData.lists[idx] && listesData.lists[idx].reponses) ? listesData.lists[idx].reponses : [];
+  var html = "";
+  reps.forEach(function(r, ri) {
+    var text = "?";
+    if (allReps) {
+      var found = allReps.filter(function(x) { return x.No_Rep === r.No_Rep; });
+      if (found.length) text = found[0].Reponse;
+    }
+    html += '<div class="flex items-center gap-2 bg-gray-50 rounded px-3 py-1">' +
+      '<span class="text-sm flex-1">' + text + '</span>' +
+      '<label class="text-xs text-gray-500">Nb: <input type="number" min="1" max="25" value="' + (r.nb_etiq || 1) + '" onchange="updateEtiq(' + idx + ',' + ri + ', this.value)" class="border rounded px-1 py-0 w-14 text-xs"></label>' +
+      '<button onclick="removeRepFromListe(' + idx + ',' + ri + ')" class="text-red-400 hover:text-red-600 text-xs">×</button>' +
+    '</div>';
+  });
+  container.innerHTML = html || '<p class="text-gray-400 italic text-xs">Aucune réponse.</p>';
+}
+
+function addRepToListe(idx, sel) {
+  var repId = parseInt(sel.value);
+  if (!repId || isNaN(repId)) return;
+  if (!listesData.lists[idx]) listesData.lists[idx] = { reponses: [] };
+  if (listesData.lists[idx].reponses.some(function(r) { return r.No_Rep === repId; })) {
+    sel.value = "";
+    return;
+  }
+  listesData.lists[idx].reponses.push({ No_Rep: repId, nb_etiq: 1 });
+  sel.value = "";
+  api("/api/activites/reponses").then(function(reps) { renderListeReps(idx, reps); });
+}
+
+function removeRepFromListe(idx, ri) {
+  listesData.lists[idx].reponses.splice(ri, 1);
+  api("/api/activites/reponses").then(function(reps) { renderListeReps(idx, reps); });
+}
+
+function updateEtiq(idx, ri, val) {
+  var v = parseInt(val);
+  if (v > 0) listesData.lists[idx].reponses[ri].nb_etiq = v;
+}
+
+function deleteListe(idx) {
+  if (!confirm("Supprimer cette liste ?")) return;
+  listesData.lists.splice(idx, 1);
+  listesCount = listesData.lists.length;
+  renderListes();
+}
+
+if (document.getElementById("listes-add-btn")) {
+  document.getElementById("listes-add-btn").addEventListener("click", function() {
+    listesData.lists.push({ reponses: [] });
+    listesCount = listesData.lists.length;
+    renderListes();
+  });
+}
+
+if (document.getElementById("listes-save-btn")) {
+  document.getElementById("listes-save-btn").addEventListener("click", function() {
+    if (!listesData.act_id) return;
+    var cleanLists = listesData.lists.filter(function(l) { return l.reponses && l.reponses.length > 0; });
+    api("/api/activites/listes", { method: "POST", body: JSON.stringify({ act_id: listesData.act_id, lists: cleanLists }) })
+      .then(function() { toast("Listes enregistrées."); })
+      .catch(function(err) { toast(err.message, "error"); });
+  });
+}
+
+if (document.getElementById("listes-delete-btn")) {
+  document.getElementById("listes-delete-btn").addEventListener("click", function() {
+    if (!listesData.act_id || !confirm("Supprimer toutes les listes de cette activité ?")) return;
+    api("/api/activites/listes/" + listesData.act_id, { method: "DELETE" })
+      .then(function() {
+        listesData.lists = [];
+        listesCount = 0;
+        renderListes();
+        toast("Listes supprimées.");
+      }).catch(function(err) { toast(err.message, "error"); });
+  });
+}
 
 
 async function deleteEleve(id) {
