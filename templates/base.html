@@ -32,6 +32,11 @@
         {% block content %}{% endblock %}
     </main>
     <script>var API_BASE = "{{ url_for('static', filename='x') }}".split("/static")[0];</script>
+    <script src="{{ url_for('static', filename='js/modules/api.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/annotations.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/classes.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/eleves.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/activites.js') }}"></script>
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
