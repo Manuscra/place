@@ -571,7 +571,7 @@ def get_positionnement(act_id):
         return jsonify({"error": "Activite not found or not a quiz"}), 404
 
     img_row = db.session.get(Img, act.No_dImg) if act.No_dImg else None
-    img_code = img_row.N_Img if img_row else "0"
+    img_url = img_row.N_Img if img_row else ""
 
     lists = Liste.query.filter_by(Act_liste=act_id).order_by(Liste.Num_Liste_Act, Liste.No_Liste).all()
 
@@ -590,8 +590,7 @@ def get_positionnement(act_id):
 
     return jsonify({
         "name": act.Name_Act,
-        "img_code": img_code,
-        "img_url": f"/api/activites/image-proxy/{img_code}",
+        "img_url": img_url,
         "labels": labels,
     })
 
