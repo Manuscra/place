@@ -46,15 +46,22 @@
 <!-- Tab: Activités -->
 <div id="tab-activites" class="tab-content">
   <div class="bg-white rounded-lg shadow p-6 mb-8">
-    <form id="create-activite" class="flex flex-wrap items-center gap-3">
-      <input type="text" name="Name_Act" placeholder="Nom de l'activité" required
-             class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]">
-      <select name="Type_Act" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-        <option value="1">Quizz</option>
-        <option value="2">Lien</option>
-      </select>
-      <select name="No_dImg" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" id="new-act-img-select"></select>
-      <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+    <form id="create-activite">
+      <div class="flex items-center gap-3 mb-3">
+        <input type="text" name="Name_Act" placeholder="Nom de l'activité" required
+               class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-[200px]">
+        <select name="Type_Act" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" id="new-act-type">
+          <option value="1">Quizz</option>
+          <option value="2">Lien</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-3">
+        <select name="No_dImg" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" id="new-act-img-select"></select>
+        <select name="No_Lien" class="border rounded px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 hidden" id="new-act-lien-select">
+          <option value="">-- Choisir un lien --</option>
+        </select>
+        <button type="submit" class="bg-indigo-600 text-white rounded px-4 py-2 hover:bg-indigo-700 transition">Créer</button>
+      </div>
     </form>
   </div>
   <div id="activites-list" class="grid gap-4"></div>

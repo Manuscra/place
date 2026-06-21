@@ -635,62 +635,116 @@ if (document.querySelector(".subtab")) {
 }
 
 // ======================== ACTIVITES ========================
-if (document.getElementById("create-activite")) {
-  loadImagesForSelect(document.getElementById("new-act-img-select"));
+var allImgs = [];
+var allLiens = [];
+var resourcesReady = false;
 
-  document.getElementById("create-activite").addEventListener("submit", async (e) => {
+async function preloadResources() {
+  if (resourcesReady) return;
+  allImgs = await api("/api/activites/images");
+  allLiens = await api("/api/activites/liens");
+  resourcesReady = true;
+}
+
+if (document.getElementById("create-activite")) {
+  (async function initActivites() {
+    await preloadResources();
+    loadImagesForSelect(document.getElementById("new-act-img-select"));
+    loadLiensForSelect(document.getElementById("new-act-lien-select"));
+
+  var typeSel = document.getElementById("new-act-type");
+  typeSel.addEventListener("change", function() {
+    var imgSel = document.getElementById("new-act-img-select");
+    var lienSel = document.getElementById("new-act-lien-select");
+    if (this.value === "1") { imgSel.classList.remove("hidden"); lienSel.classList.add("hidden"); lienSel.value = ""; }
+    else { imgSel.classList.add("hidden"); imgSel.value = "0"; lienSel.classList.remove("hidden"); }
+  });
+
+  document.getElementById("create-activite").addEventListener("submit", async function(e) {
     e.preventDefault();
     var form = new FormData(e.target);
     var data = Object.fromEntries(form);
     data.Type_Act = parseInt(data.Type_Act);
     data.No_dImg = parseInt(data.No_dImg) || 0;
     try {
-      await api("/api/activites", { method: "POST", body: JSON.stringify(data) });
+      var created = await api("/api/activites", { method: "POST", body: JSON.stringify(data) });
+      // Associate lien if type is Lien
+      if (data.Type_Act === 2 && data.No_Lien) {
+        await api("/api/activites/assoc-type", { method: "POST", body: JSON.stringify({ No_Act: created.No_Act, Type_Act: 2, No_Lien: parseInt(data.No_Lien) }) });
+      }
       e.target.reset();
+      document.getElementById("new-act-img-select").classList.remove("hidden");
+      document.getElementById("new-act-lien-select").classList.add("hidden");
       toast("Activité créée !");
       loadActivites();
     } catch (err) { toast(err.message, "error"); }
   });
+  })();  // end initActivites IIFE
+}
+
+function loadLiensForSelect(select) {
+  if (!select) return;
+  select.innerHTML = '<option value="">-- Choisir un lien --</option>' +
+    allLiens.map(function(l) { return '<option value="' + l.No_Lien + '">' + l.Link.substring(0, 60) + '</option>'; }).join("");
 }
 
 async function loadImagesForSelect(select) {
   if (!select) return;
-  var imgs = await api("/api/activites/images");
   select.innerHTML = '<option value="0">-- Aucune image --</option>' +
-    imgs.map(function(i) { return '<option value="' + i.No_Img + '">' + i.N_Img + '</option>'; }).join("");
+    allImgs.map(function(i) { return '<option value="' + i.No_Img + '">' + i.N_Img + '</option>'; }).join("");
 }
 
 async function loadActivites() {
+  if (!resourcesReady) await preloadResources();
   var activites = await api("/api/activites");
   var list = document.getElementById("activites-list");
   if (!list) return;
   list.innerHTML = activites.map(function(a) {
-    var typeBadge = a.Type_Act === 1
-      ? '<span class="badge badge-quizz">Quizz</span>'
-      : (a.lien_url
-          ? '<span class="badge badge-lien">Lien</span> <a href="' + a.lien_url.replace(/"/g, "&quot;") + '" target="_blank" class="text-xs text-indigo-500 hover:underline ml-1 truncate max-w-[200px] inline-block">' + (a.lien_url.length > 50 ? a.lien_url.substring(0, 50) + "..." : a.lien_url) + '</a>'
-          : '<span class="badge badge-lien">Lien</span>');
-
-    var imgName = a.img_name ? '<span class="text-xs text-gray-400 ml-2">Img: ' + a.img_name + '</span>' : '';
+    var imgName = a.img_name ? 'Img: ' + a.img_name : '';
+    var lienDisplay = a.lien_url ? '<a href="' + a.lien_url.replace(/"/g, "&quot;") + '" target="_blank" class="text-xs text-indigo-500 hover:underline">' + (a.lien_url.length > 40 ? a.lien_url.substring(0, 40) + "..." : a.lien_url) + '</a>' : '';
     var chaps = (a.chapitre_names && a.chapitre_names.length) ? '<div class="text-xs text-gray-400 mt-1">Chapitres: ' + a.chapitre_names.join(", ") + '</div>' : '';
     var nivs = (a.niveau_names && a.niveau_names.length) ? '<div class="text-xs text-gray-400">Niveaux: ' + a.niveau_names.join(", ") + '</div>' : '';
 
+    var resSelector = '';
+    if (a.Type_Act === 1) {
+      resSelector = '<select onchange="changeActImg(' + a.No_Act + ', this.value)" class="border rounded px-1 py-0 text-xs">' +
+        '<option value="0"' + (!a.No_dImg ? ' selected' : '') + '>--</option>';
+      allImgs.forEach(function(i) {
+        resSelector += '<option value="' + i.No_Img + '"' + (a.No_dImg === i.No_Img ? ' selected' : '') + '>' + i.N_Img + '</option>';
+      });
+      resSelector += '</select>';
+    } else {
+      resSelector = '<select onchange="changeActLien(' + a.No_Act + ', this.value)" class="border rounded px-1 py-0 text-xs">' +
+        '<option value="0"' + (!a.lien_url ? ' selected' : '') + '>--</option>';
+      var linkedId = 0;
+      if (a.lien_url) {
+        for (var li = 0; li < allLiens.length; li++) {
+          if (allLiens[li].Link === a.lien_url) { linkedId = allLiens[li].No_Lien; break; }
+        }
+      }
+      allLiens.forEach(function(l) {
+        resSelector += '<option value="' + l.No_Lien + '"' + (linkedId === l.No_Lien ? ' selected' : '') + '>' + l.Link.substring(0, 50) + '</option>';
+      });
+      resSelector += '</select>';
+    }
+
     return '<div class="bg-white rounded-lg shadow p-4" data-id="' + a.No_Act + '">' +
       '<div class="card-row">' +
-        '<div class="flex-1">' +
+        '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center gap-2 mb-1">' +
-            '<h3 class="font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600">' + a.Name_Act + '</h3>' +
-            typeBadge + imgName +
+            '<h3 class="font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600 truncate">' + a.Name_Act + '</h3>' +
+          '</div>' +
+          '<div class="flex items-center gap-2 text-xs text-gray-500">' +
+            '<select onchange="changeActType(' + a.No_Act + ', this)" class="border rounded px-1 py-0 text-xs">' +
+              '<option value="1"' + (a.Type_Act === 1 ? ' selected' : '') + '>Quizz</option>' +
+              '<option value="2"' + (a.Type_Act === 2 ? ' selected' : '') + '>Lien</option>' +
+            '</select>' +
+            resSelector +
+            (a.Type_Act === 1 ? '<span>' + imgName + '</span>' : lienDisplay) +
           '</div>' +
           chaps + nivs +
         '</div>' +
-        '<div class="flex items-center gap-2">' +
-          '<select onchange="changeActType(' + a.No_Act + ', this)" class="border rounded px-2 py-1 text-xs">' +
-            '<option value="1"' + (a.Type_Act === 1 ? ' selected' : '') + '>Quizz</option>' +
-            '<option value="2"' + (a.Type_Act === 2 ? ' selected' : '') + '>Lien</option>' +
-          '</select>' +
-          '<button onclick="deleteActivite(' + a.No_Act + ')" class="text-red-500 hover:text-red-700 text-sm" title="Supprimer">&#128465;</button>' +
-        '</div>' +
+        '<button onclick="deleteActivite(' + a.No_Act + ')" class="text-red-500 hover:text-red-700 text-sm ml-2 shrink-0" title="Supprimer">&#128465;</button>' +
       '</div>' +
     '</div>';
   }).join("");
@@ -699,12 +753,23 @@ async function loadActivites() {
 async function changeActType(id, select) {
   var newType = parseInt(select.value);
   try {
-    await api("/api/activites/" + id, {
-      method: "PUT",
-      body: JSON.stringify({ Type_Act: newType })
-    });
+    await api("/api/activites/" + id, { method: "PUT", body: JSON.stringify({ Type_Act: newType }) });
     loadActivites();
   } catch (err) { toast(err.message, "error"); loadActivites(); }
+}
+
+async function changeActImg(id, imgId) {
+  try {
+    await api("/api/activites/assoc-type", { method: "POST", body: JSON.stringify({ No_Act: id, Type_Act: 1, No_dImg: parseInt(imgId) || 0 }) });
+    loadActivites();
+  } catch (err) { toast(err.message, "error"); }
+}
+
+async function changeActLien(id, lienId) {
+  try {
+    await api("/api/activites/assoc-type", { method: "POST", body: JSON.stringify({ No_Act: id, Type_Act: 2, No_Lien: parseInt(lienId) || 0 }) });
+    loadActivites();
+  } catch (err) { toast(err.message, "error"); }
 }
 
 async function deleteActivite(id) {
