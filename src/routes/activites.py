@@ -549,9 +549,12 @@ PROD_IMAGE_BASE = "https://duss.alwaysdata.net/qcm/image.php"
 
 @activites_bp.route("/image-proxy/<code>", methods=["GET"])
 def image_proxy(code):
-    """Proxy activity images from the production server."""
+    """Proxy activity images from the production server or direct URLs."""
     try:
-        url = f"{PROD_IMAGE_BASE}?img={code}"
+        if code.startswith("http://") or code.startswith("https://"):
+            url = code
+        else:
+            url = f"{PROD_IMAGE_BASE}?img={code}"
         resp = requests.get(url, timeout=10)
         resp.raise_for_status()
         return Response(resp.content, content_type=resp.headers.get("content-type", "image/png"))
@@ -715,3 +718,99 @@ def delete_listes(act_id):
         Liste.query.filter_by(Act_liste=act_id).delete()
         db.session.commit()
     return jsonify({"message": "Listes deleted"}), 200
+
+
+# =============================================================================
+# Niveau chapitres : full hierarchy for a level (replaces apiact.py)
+# =============================================================================
+
+def _build_activite(act, type_name):
+    a = {
+        "Type_Act": type_name,
+        "Act_Name": act.Name_Act,
+    }
+    if type_name == "quizz":
+        img = db.session.get(Img, act.No_dImg) if act.No_dImg else None
+        a["N_Img"] = img.N_Img if img else ""
+
+        listes_rows = Liste.query.filter_by(Act_liste=act.No_Act).order_by(
+            Liste.Num_Liste_Act, Liste.No_Liste
+        ).all()
+
+        lists_map = {}
+        etiquettes_list = []
+        for lst in listes_rows:
+            key = lst.Num_Liste_Act
+            if key not in lists_map:
+                lists_map[key] = {"Num_Liste": key, "Reponses": []}
+            rep = db.session.get(Reponse, lst.Num_Rep)
+            rep_text = rep.Reponse if rep else "?"
+            lists_map[key]["Reponses"].append(rep_text)
+
+            rep_idx = len(lists_map[key]["Reponses"]) - 1
+            etiqs = Etiquette.query.filter_by(No_liste=lst.No_Liste).order_by(Etiquette.No_Etiqu).all()
+            for eq in etiqs:
+                etiquettes_list.append({
+                    "Rep_good": rep_idx,
+                    "X": eq.x,
+                    "Y": eq.y,
+                    "Liste_Num": lst.Num_Liste_Act,
+                })
+
+        a["Listes"] = [lists_map[k] for k in sorted(lists_map.keys())]
+        a["Etiquettes"] = etiquettes_list
+    else:
+        lien = Lien.query.filter_by(No_dAct=act.No_Act).first()
+        a["Lnk_Act"] = lien.Link if lien else ""
+
+    return a
+
+
+@activites_bp.route("/niveau/<int:niv_id>", methods=["GET"])
+def get_niveau_chapitres(niv_id):
+    niv = db.session.get(Niveau, niv_id)
+    if not niv:
+        return jsonify({"error": "Niveau not found"}), 404
+
+    type_quizz = TypeActivite.query.filter_by(Name_Type="quizz").first()
+    quizz_id = type_quizz.No_Type if type_quizz else 1
+
+    attr_nivs = AttribNiv.query.filter_by(No_dNiv=niv_id).order_by(AttribNiv.No_Niv_Attrib).all()
+
+    chap_activites = []
+    for an in attr_nivs:
+        attr_chaps = AttribChap.query.filter_by(No_dChap=an.No_dChap).order_by(AttribChap.No_Attrib).all()
+        for ac in attr_chaps:
+            act_attr = ActAttrib.query.filter_by(
+                No_Niv_Attrib=niv_id, No_Act_Attrib=ac.No_dAct
+            ).first()
+            if act_attr:
+                chap_activites.append((an.No_dChap, ac.No_dAct))
+
+    if not chap_activites:
+        return jsonify([])
+
+    chapitres = []
+    current_chap_id = chap_activites[0][0]
+    chap = db.session.get(Chap, current_chap_id)
+    current_entry = {"Chap_Name": chap.Name_Chap if chap else "?"}
+    activites_list = []
+
+    for chap_id, act_id in chap_activites:
+        if chap_id != current_chap_id:
+            current_entry["Activites"] = activites_list
+            chapitres.append(current_entry)
+            current_chap_id = chap_id
+            chap = db.session.get(Chap, chap_id)
+            current_entry = {"Chap_Name": chap.Name_Chap if chap else "?"}
+            activites_list = []
+
+        act = db.session.get(Activite, act_id)
+        if act:
+            type_name = "quizz" if act.Type_Act == quizz_id else "lien"
+            activites_list.append(_build_activite(act, type_name))
+
+    current_entry["Activites"] = activites_list
+    chapitres.append(current_entry)
+
+    return jsonify(chapitres)

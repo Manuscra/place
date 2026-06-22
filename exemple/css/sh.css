@@ -1,0 +1,66 @@
+:root {
+  --main-position: 80px;
+  --div-gen-visi : inline-block;
+}
+
+#sh1 {
+ position:absolute;
+}
+
+#sh2 {
+ position:absolute;
+ z-index: -5;
+ left:50px;
+ top: 10px;
+}
+
+#shclose {
+ position:absolute;
+ right:0;
+}
+.close {
+ background: url('..img/close.png');
+}
+
+.check {
+  background-color: var(--head);
+  border: none;
+  color: white;
+  padding: 6px 5px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 12px;
+  margin: 1px 1px;
+  cursor: pointer;
+}
+
+#sh2.img {
+  font-weight: bold;
+  font-style: italic;
+  color: rgb(51, 0, 153);
+}
+
+#cons-sh2 {
+ position:absolute;
+ width: 100%;
+ left:300px;
+ top: 650px;
+}
+
+.gen {
+ position: absolute;
+ display: var(--div-gen-visi);
+ top:var(--main-position);
+ left: 40px;
+ right: 80px;
+ height: 800px;
+ background-color: rgb(204, 204, 255);
+ opacity: 0.95;
+}
+
+SELECT {
+ font-size:10pt;
+ font-family:Arial;
+}
+

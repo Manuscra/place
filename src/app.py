@@ -129,6 +129,9 @@ def create_app(testing=False, run_migrations=True):
             "auth.register",
             "auth.logout",
             "static",
+            "qcm_page",
+            "activites.get_niveau_chapitres",
+            "activites.image_proxy",
         ]
         
         # Check if current endpoint is in public_routes
@@ -345,6 +348,10 @@ def create_app(testing=False, run_migrations=True):
     @app.route("/activites")
     def activites_page():
         return render_template("activites.html")
+
+    @app.route("/qcm/<int:niv_id>")
+    def qcm_page(niv_id):
+        return render_template("qcm.html", niv_id=niv_id)
 
     @app.route("/positionnement")
     def positionnement_page():

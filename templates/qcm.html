@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QCM — Niveau {{ niv_id }}</title>
+    <link href="{{ url_for('static', filename='css/output.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/qcm.css') }}" rel="stylesheet">
+    <style>
+        :root {
+            {% if niv_id == 1 %}
+            --qcm-head: #4a148c;
+            --qcm-bg: #e1bee7;
+            {% elif niv_id == 2 %}
+            --qcm-head: #0d47a1;
+            --qcm-bg: #bbdefb;
+            {% elif niv_id == 3 %}
+            --qcm-head: #b71c1c;
+            --qcm-bg: #ffcdd2;
+            {% elif niv_id == 4 %}
+            --qcm-head: #1b5e20;
+            --qcm-bg: #c8e6c9;
+            {% else %}
+            --qcm-head: #171717;
+            --qcm-bg: #ccccff;
+            {% endif %}
+        }
+    </style>
+</head>
+<body class="qcm-page">
+    <div id="qcm-menu" class="qcm-menu-bar"></div>
+    <div id="qcm-content" class="qcm-content hidden"></div>
+
+    <script>var API_BASE = "{{ url_for('static', filename='x') }}".split("/static")[0];</script>
+    <script src="{{ url_for('static', filename='js/modules/qcm-alert.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/qcm-menu.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/qcm-engine.js') }}"></script>
+    <script>
+    (function () {
+        var menuContainer = document.getElementById("qcm-menu");
+        var contentArea = document.getElementById("qcm-content");
+        var nivId = {{ niv_id }};
+
+        fetch(API_BASE + "/api/activites/niveau/" + nivId)
+            .then(function (r) {
+                if (!r.ok) throw new Error("Erreur API: " + r.status);
+                return r.json();
+            })
+            .then(function (chapitres) {
+                if (!chapitres || !chapitres.length) {
+                    menuContainer.innerHTML = "<p style='text-align:center;margin-top:40px;'>Aucune activit&eacute; pour ce niveau.</p>";
+                    return;
+                }
+                QcmMenu.build(chapitres, menuContainer);
+                QcmEngine.load(chapitres, contentArea);
+            })
+            .catch(function (err) {
+                menuContainer.innerHTML = "<p style='text-align:center;margin-top:40px;color:red;'>Erreur de chargement : " + err.message + "</p>";
+            });
+    })();
+    </script>
+</body>
+</html>
