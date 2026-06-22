@@ -6,8 +6,9 @@
 /* --- CSS Custom Properties (overridden per-level in template) --- */
 :root {
   --qcm-head: #171717;
-  --qcm-fd: none;
+  --qcm-head-dark: #0a0a0a;
   --qcm-bg: #ccccff;
+  --qcm-fd: none;
   --main-position: 80px;
   --div-gen-visi: inline-block;
 }
@@ -15,18 +16,19 @@
 /* --- Base page --- */
 body.qcm-page {
   color: rgb(0, 0, 0);
-  background-color: rgb(204, 204, 255);
+  background-color: var(--qcm-bg);
   background-image: var(--qcm-fd);
   background-repeat: no-repeat;
   background-attachment: fixed;
-  background-size: 100% 100%;
+  background-size: cover;
+  background-position: center;
   margin: 10px;
   padding: 0;
   font-family: Arial, Helvetica, sans-serif;
 }
 
 /* =========================================================================
-   Dropdown menu — ported from men.css
+   Dropdown menu
    ========================================================================= */
 
 .qcm-menu-bar {
@@ -37,97 +39,112 @@ body.qcm-page {
   z-index: 18;
 }
 
-.qcm-menu-bar ul {
+/* --- Top bar --- */
+.qcm-menu-bar > ul {
   margin: 0;
   padding: 0;
   list-style: none;
-  background: #0b1e3d repeat-x top;
+  background: var(--qcm-head-dark);
   height: 28px;
   width: 100%;
-  border: solid 1px var(--qcm-head);
-  border-width: 1px 1px 1px 0;
+  border-bottom: 2px solid var(--qcm-head);
 }
 
-.qcm-menu-bar li {
+.qcm-menu-bar > ul > li {
   display: inline;
   position: relative;
   float: left;
 }
 
-.qcm-menu-bar li a {
+.qcm-menu-bar > ul > li > a {
   display: block;
   float: left;
-  height: 29px;
-  line-height: 29px;
-  padding: 0 25px;
+  height: 28px;
+  line-height: 28px;
+  padding: 0 20px;
   text-decoration: none;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.9);
   font-weight: normal;
   font-size: 14px;
-  border-left: solid 1px var(--qcm-head);
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+  transition: color 0.2s, background-color 0.2s;
 }
 
-.qcm-menu-bar li a:hover {
-  color: var(--qcm-head);
-  background: #ffffff;
+.qcm-menu-bar > ul > li:first-child > a {
+  border-left: none;
 }
 
+.qcm-menu-bar > ul > li > a:hover,
+.qcm-menu-bar > ul > li:hover > a {
+  color: #ffffff;
+  background: var(--qcm-head);
+}
+
+/* --- Home link --- */
+.qcm-menu-bar .qcm-home > a {
+  font-weight: bold;
+}
+
+/* --- Dropdown sub-menus --- */
 .qcm-menu-bar li ul {
   margin: 0;
-  padding: 0 5px;
-  line-height: 0;
+  padding: 5px 0;
   position: absolute;
-  top: 29px;
+  top: 28px;
   left: 0;
-  border: solid 1px var(--qcm-head);
-  border-width: 0 1px 1px 1px;
   width: 260px;
-  display: none;
-  background: #ffffff;
+  display: block;
+  list-style: none;
+  background: var(--qcm-head-dark);
+  border: 1px solid var(--qcm-head);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
 }
 
 .qcm-menu-bar li:hover ul {
-  display: block;
-}
-
-.qcm-menu-bar li:hover > a {
-  color: var(--qcm-head);
-  background: #ffffff;
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .qcm-menu-bar li ul li {
   display: block;
-  border-bottom: solid 1px #dbdcd9;
+  float: none;
   width: 100%;
-  padding: 0 0 0 10px;
+  padding: 0;
+  margin: 0;
+  border: none;
 }
 
-.qcm-menu-bar li ul li:last-child {
-  border-bottom: 0;
+.qcm-menu-bar li ul li a {
+  display: block;
+  float: none;
+  height: auto;
+  padding: 7px 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  line-height: 1.4;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  transition: color 0.15s, background-color 0.15s, padding-left 0.2s;
 }
 
-.qcm-menu-bar li ul a {
-  border-width: 0;
-  color: #909090;
-  padding: 0 5px 0 0;
-  background-color: transparent;
-}
-
-.qcm-menu-bar li:hover ul li a {
-  color: #909090;
+.qcm-menu-bar li ul li:last-child > a {
+  border-bottom: none;
 }
 
 .qcm-menu-bar li ul li a:hover {
-  color: var(--qcm-head);
+  color: #ffffff;
+  background: var(--qcm-head);
+  padding-left: 22px;
 }
 
 .qcm-menu-bar:hover ~ .qcm-content select:focus {
   display: none;
-}
-
-/* --- Home link in menu --- */
-.qcm-menu-bar .qcm-home a {
-  font-weight: bold;
 }
 
 /* =========================================================================
@@ -141,10 +158,13 @@ body.qcm-page {
   left: 40px;
   right: 80px;
   height: 800px;
+  transition: opacity 0.3s;
 }
 
 .qcm-content.hidden {
-  display: none;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 #qcm-img-container {
@@ -158,6 +178,7 @@ body.qcm-page {
   font-weight: bold;
   font-style: italic;
   color: rgb(51, 0, 153);
+  animation: qcm-fade-in 0.3s ease-out;
 }
 
 /* --- Verify button area --- */
@@ -179,6 +200,15 @@ body.qcm-page {
   font-size: 12px;
   margin: 1px 1px;
   cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s;
+}
+
+.qcm-check-btn:hover {
+  transform: scale(1.05);
+}
+
+.qcm-check-btn:active {
+  transform: scale(0.97);
 }
 
 /* --- Close button --- */
@@ -197,6 +227,15 @@ body.qcm-page {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s;
+}
+
+.qcm-close-btn:hover {
+  transform: scale(1.1);
+}
+
+.qcm-close-btn:active {
+  transform: scale(0.95);
 }
 
 /* --- Question labels --- */
@@ -233,11 +272,12 @@ p.qcm-what {
   min-height: 160px;
   max-height: 480px;
   margin-left: -180px;
-  border: 1px #666666 solid;
-  background-color: #ccccff;
+  border: 1px solid var(--qcm-head);
+  background-color: var(--qcm-bg);
   font-family: sans-serif;
   border-radius: 10px;
-  box-shadow: 2px 2px 12px #666666;
+  box-shadow: 2px 2px 12px rgba(0, 0, 0, 0.25);
+  animation: qcm-alert-in 0.25s ease-out;
 }
 
 .qcm-alert-title {
@@ -246,7 +286,7 @@ p.qcm-what {
   height: 32px;
   line-height: 32px;
   text-align: center;
-  background-color: #666666;
+  background-color: var(--qcm-head-dark);
   font-size: 16px;
   color: #ffffff;
   font-weight: bold;
@@ -289,4 +329,32 @@ p.qcm-what {
 .qcm-player video {
   max-width: 90vw;
   max-height: 80vh;
+}
+
+/* =========================================================================
+   Keyframes
+   ========================================================================= */
+
+@keyframes qcm-alert-in {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes qcm-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* =========================================================================
+   Accessibility: respect user motion preferences
+   ========================================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
