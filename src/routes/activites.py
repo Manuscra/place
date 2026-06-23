@@ -76,7 +76,7 @@ def delete_activite(activite_id):
     a = db.session.get(Activite, activite_id)
     if not a:
         return jsonify({"error": "Activite not found"}), 404
-    Lien.query.filter_by(No_dAct=activite_id).update({"No_dAct": 0})
+    Lien.query.filter_by(No_dAct=activite_id).delete()
     db.session.delete(a)
     db.session.commit()
     return jsonify({"message": "Activite deleted"}), 200
@@ -123,6 +123,14 @@ def delete_image(img_id):
     return jsonify({"message": "Image deleted"}), 200
 
 
+def _enrich_lien(ln):
+    d = LienOut.model_validate(ln).model_dump()
+    if ln.No_dAct and ln.No_dAct != 0:
+        act = db.session.get(Activite, ln.No_dAct)
+        d["act_name"] = act.Name_Act if act else None
+    return d
+
+
 # =============================================================================
 # Liens
 # =============================================================================
@@ -130,7 +138,7 @@ def delete_image(img_id):
 @activites_bp.route("/liens", methods=["GET"])
 def list_liens():
     liens = Lien.query.order_by(Lien.No_Lien).all()
-    return jsonify([LienOut.model_validate(ln).model_dump() for ln in liens])
+    return jsonify([_enrich_lien(ln) for ln in liens])
 
 
 @activites_bp.route("/liens", methods=["POST"])
@@ -139,7 +147,7 @@ def create_lien():
     lien = Lien(Link=data.Link)
     db.session.add(lien)
     db.session.commit()
-    return jsonify(LienOut.model_validate(lien).model_dump()), 201
+    return jsonify(_enrich_lien(lien)), 201
 
 
 @activites_bp.route("/liens/<int:lien_id>", methods=["PUT"])
@@ -151,7 +159,7 @@ def update_lien(lien_id):
     for key, val in data.model_dump(exclude_unset=True).items():
         setattr(lien, key, val)
     db.session.commit()
-    return jsonify(LienOut.model_validate(lien).model_dump())
+    return jsonify(_enrich_lien(lien))
 
 
 @activites_bp.route("/liens/<int:lien_id>", methods=["DELETE"])

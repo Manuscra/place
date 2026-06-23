@@ -58,6 +58,7 @@ class LienOut(BaseModel):
     No_Lien: int
     No_dAct: int | None = None
     Link: str
+    act_name: str | None = None
 
 
 # --- Chap ---

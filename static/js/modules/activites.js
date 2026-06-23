@@ -118,7 +118,7 @@ async function loadActivites() {
       '<div class="card-row">' +
         '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center gap-2 mb-1">' +
-            '<h3 class="font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600 truncate">' + a.Name_Act + '</h3>' +
+            '<h3 class="font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600 truncate"' + (a.lien_url ? ' data-lien="' + a.lien_url + '"' : '') + '>' + a.Name_Act + '</h3>' +
           '</div>' +
           '<div class="flex items-center gap-2 text-xs text-gray-500">' +
             '<select onchange="changeActType(' + a.No_Act + ', this)" class="border rounded px-1 py-0 text-xs">' +
@@ -186,6 +186,7 @@ async function renameActivite(card) {
     var newH3 = document.createElement("h3");
     newH3.className = "font-semibold text-gray-900 activite-name cursor-pointer hover:text-indigo-600";
     newH3.textContent = val;
+    if (h3.dataset.lien) newH3.dataset.lien = h3.dataset.lien;
     input.replaceWith(newH3);
     if (val !== currentName) {
       try {
@@ -207,7 +208,13 @@ if (document.getElementById("activites-list")) {
     var card = e.target.closest("[data-id]");
     if (!card) return;
     if (card._clickTimer) { clearTimeout(card._clickTimer); card._clickTimer = null; return; }
-    card._clickTimer = setTimeout(function() { card._clickTimer = null; }, 250);
+    card._clickTimer = setTimeout(function() {
+      card._clickTimer = null;
+      var h3 = card.querySelector("h3.activite-name");
+      if (h3 && h3.dataset.lien) {
+        window.open(h3.dataset.lien, "_blank");
+      }
+    }, 250);
   });
   document.getElementById("activites-list").addEventListener("dblclick", function(e) {
     if (e.target.closest("button, input, form, textarea, select, a")) return;
@@ -505,6 +512,7 @@ async function loadLiens() {
     return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + l.No_Lien + '">' +
       '<div class="flex-1 min-w-0">' +
         '<h3 class="font-semibold text-gray-900 lien-url cursor-pointer hover:text-indigo-600 truncate">' + l.Link + '</h3>' +
+        '<div class="text-xs text-gray-400 mt-1">Activité : ' + (l.act_name || '—') + '</div>' +
       '</div>' +
       '<button onclick="deleteLien(' + l.No_Lien + ')" class="text-red-500 hover:text-red-700 text-sm ml-3 shrink-0">&#128465;</button>' +
     '</div>';
@@ -521,10 +529,25 @@ async function deleteLien(id) {
 }
 
 if (document.getElementById("liens-list")) {
+  document.getElementById("liens-list").addEventListener("click", function(e) {
+    if (e.target.closest("button, input, form, textarea")) return;
+    var card = e.target.closest("[data-id]");
+    if (!card) return;
+    if (card._clickTimer) { clearTimeout(card._clickTimer); card._clickTimer = null; return; }
+    var h3 = card.querySelector("h3.lien-url");
+    card._clickTimer = setTimeout(function() {
+      card._clickTimer = null;
+      if (h3) {
+        window.open(h3.textContent.trim(), "_blank");
+      }
+    }, 250);
+  });
+
   document.getElementById("liens-list").addEventListener("dblclick", function(e) {
     if (e.target.closest("button")) return;
     var card = e.target.closest("[data-id]");
     if (!card) return;
+    if (card._clickTimer) { clearTimeout(card._clickTimer); card._clickTimer = null; }
     var id = parseInt(card.dataset.id);
     var h3 = card.querySelector("h3.lien-url");
     var current = h3.textContent.trim();
