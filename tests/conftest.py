@@ -1,13 +1,13 @@
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import pytest
 
 from src.app import create_app
 from src.database import db
 from src.models import User
-
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 @pytest.fixture(scope="function")
