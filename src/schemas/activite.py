@@ -79,10 +79,16 @@ class ChapOut(BaseModel):
 # --- Niveau ---
 class NiveauCreate(BaseModel):
     Name_Niv: str = Field(..., min_length=1)
+    qcm_active: int | None = Field(default=1)
+    qcm_bg: str | None = Field(default=None)
+    qcm_theme: str | None = Field(default=None)
 
 
 class NiveauUpdate(BaseModel):
     Name_Niv: str | None = Field(default=None, min_length=1)
+    qcm_active: int | None = Field(default=None)
+    qcm_bg: str | None = Field(default=None)
+    qcm_theme: str | None = Field(default=None)
 
 
 class NiveauOut(BaseModel):
@@ -90,6 +96,9 @@ class NiveauOut(BaseModel):
 
     No_Niv: int
     Name_Niv: str
+    qcm_active: int | None = 1
+    qcm_bg: str | None = None
+    qcm_theme: str | None = None
 
 
 # --- Reponse ---

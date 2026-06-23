@@ -88,8 +88,6 @@ async function loadActivites() {
   var list = document.getElementById("activites-list");
   if (!list) return;
   list.innerHTML = activites.map(function(a) {
-    var imgName = a.img_name ? 'Img: ' + a.img_name : '';
-    var lienDisplay = a.lien_url ? '<a href="' + a.lien_url.replace(/"/g, "&quot;") + '" target="_blank" class="text-xs text-indigo-500 hover:underline">' + (a.lien_url.length > 40 ? a.lien_url.substring(0, 40) + "..." : a.lien_url) + '</a>' : '';
     var chaps = (a.chapitre_names && a.chapitre_names.length) ? '<div class="text-xs text-gray-400 mt-1">Chapitres: ' + a.chapitre_names.join(", ") + '</div>' : '';
     var nivs = (a.niveau_names && a.niveau_names.length) ? '<div class="text-xs text-gray-400">Niveaux: ' + a.niveau_names.join(", ") + '</div>' : '';
 
@@ -128,9 +126,8 @@ async function loadActivites() {
               '<option value="2"' + (a.Type_Act === 2 ? ' selected' : '') + '>Lien</option>' +
             '</select>' +
             resSelector +
-            (a.Type_Act === 1 ? '<span>' + imgName + '</span>' : lienDisplay) +
+            chaps + nivs +
           '</div>' +
-          chaps + nivs +
         '</div>' +
         '<button onclick="deleteActivite(' + a.No_Act + ')" class="text-red-500 hover:text-red-700 text-sm ml-2 shrink-0" title="Supprimer">&#128465;</button>' +
       '</div>' +
@@ -306,11 +303,44 @@ async function loadNiveaux() {
   var list = document.getElementById("niveaux-list");
   if (!list) return;
   list.innerHTML = nivs.map(function(n) {
+    var qcmInfo = [];
+    if (n.qcm_bg) qcmInfo.push('bg: ' + n.qcm_bg + '.jpg');
+    if (n.qcm_theme) qcmInfo.push('<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:' + n.qcm_theme + ';"></span> ' + n.qcm_theme);
+    var qcmMeta = qcmInfo.length ? ' <span class="text-xs text-gray-400">(' + qcmInfo.join(', ') + ')</span>' : '';
+
+    var activeVal = n.qcm_active ? 1 : 0;
+    var activeLabel = n.qcm_active ? 'Actif' : 'Inactif';
+    var activeClass = n.qcm_active ? 'text-green-600' : 'text-red-400';
+
     return '<div class="bg-white rounded-lg shadow p-3 flex justify-between items-center" data-id="' + n.No_Niv + '">' +
-      '<h3 class="font-semibold text-gray-900 niv-name cursor-pointer hover:text-indigo-600">' + n.Name_Niv + '</h3>' +
-      '<button onclick="deleteNiv(' + n.No_Niv + ')" class="text-red-500 hover:text-red-700 text-sm">&#128465;</button>' +
+      '<div class="flex-1 min-w-0">' +
+        '<h3 class="font-semibold text-gray-900 niv-name cursor-pointer hover:text-indigo-600">' + n.Name_Niv + qcmMeta + '</h3>' +
+      '</div>' +
+      '<span class="flex items-center gap-1 text-xs ' + activeClass + ' cursor-pointer ml-3 shrink-0 qcm-active-tog" onclick="toggleQcmActive(' + n.No_Niv + ', this)" data-active="' + activeVal + '">' +
+        '<span class="qcm-toggle' + (n.qcm_active ? ' active' : '') + '"></span>' +
+        activeLabel +
+      '</span>' +
+      '<button onclick="deleteNiv(' + n.No_Niv + ')" class="text-red-500 hover:text-red-700 text-sm ml-2 shrink-0">&#128465;</button>' +
     '</div>';
   }).join("");
+}
+
+async function toggleQcmActive(id, el) {
+  var newVal = el.dataset.active === '1' ? 0 : 1;
+  try {
+    await ActivitesApi.updateNiveau(id, { qcm_active: newVal });
+    el.dataset.active = String(newVal);
+    var tog = el.querySelector('.qcm-toggle');
+    if (newVal) {
+      el.className = el.className.replace('text-red-400', 'text-green-600');
+      tog.classList.add('active');
+      el.lastChild.textContent = 'Actif';
+    } else {
+      el.className = el.className.replace('text-green-600', 'text-red-400');
+      tog.classList.remove('active');
+      el.lastChild.textContent = 'Inactif';
+    }
+  } catch (err) { toast(err.message, 'error'); }
 }
 
 async function deleteNiv(id) {
@@ -329,27 +359,61 @@ if (document.getElementById("niveaux-list")) {
     if (!card) return;
     var id = parseInt(card.dataset.id);
     var h3 = card.querySelector("h3.niv-name");
-    var current = h3.textContent.trim();
-    var input = document.createElement("input");
-    input.type = "text";
-    input.value = current;
-    input.className = "border rounded px-2 py-1 text-sm w-full font-semibold";
-    h3.replaceWith(input);
-    input.focus();
-    input.select();
-    async function save() {
-      var val = input.value.trim() || current;
-      var newH3 = document.createElement("h3");
-      newH3.className = "font-semibold text-gray-900 niv-name cursor-pointer hover:text-indigo-600";
-      newH3.textContent = val;
-      input.replaceWith(newH3);
-      if (val !== current) {
-        try { await ActivitesApi.updateNiveau(id, { Name_Niv: val }); }
-        catch (err) { newH3.textContent = current; }
+    var currentName = h3.childNodes[0] ? h3.childNodes[0].textContent.trim() : '';
+
+    ActivitesApi.listNiveaux().then(function(nivs) {
+      var niv = nivs.filter(function(x) { return x.No_Niv === id; })[0];
+      if (!niv) return;
+      var container = h3.parentElement;
+
+      var form = document.createElement("div");
+      form.className = "flex flex-wrap items-center gap-2";
+      form.innerHTML =
+        '<input type="text" class="border rounded px-2 py-1 text-sm w-40 font-semibold" value="' + currentName + '" placeholder="Nom">' +
+        '<input type="text" class="border rounded px-2 py-1 text-sm w-24" value="' + (niv.qcm_bg || '') + '" placeholder="Fond">' +
+        '<input type="text" class="border rounded px-2 py-1 text-sm w-28" value="' + (niv.qcm_theme || '') + '" placeholder="Couleur">';
+
+      container.innerHTML = "";
+      container.appendChild(form);
+
+      var inputs = form.querySelectorAll("input");
+      var nameInput = inputs[0];
+      var bgInput = inputs[1];
+      var themeInput = inputs[2];
+      nameInput.focus();
+      nameInput.select();
+
+      async function doSave() {
+        var val = nameInput.value.trim() || currentName;
+        var bgVal = bgInput.value.trim() || null;
+        var themeVal = themeInput.value.trim() || null;
+
+        var newContent = document.createElement("div");
+        newContent.className = "flex-1 min-w-0";
+
+        var qcmInfo = [];
+        if (bgVal) qcmInfo.push('bg: ' + bgVal + '.jpg');
+        if (themeVal) qcmInfo.push('<span style="display:inline-block;width:12px;height:12px;border-radius:2px;background:' + themeVal + ';"></span> ' + themeVal);
+        var qcmMeta = qcmInfo.length ? ' <span class="text-xs text-gray-400">(' + qcmInfo.join(', ') + ')</span>' : '';
+
+        var newH3 = document.createElement("h3");
+        newH3.className = "font-semibold text-gray-900 niv-name cursor-pointer hover:text-indigo-600";
+        newH3.innerHTML = val + qcmMeta;
+        newContent.appendChild(newH3);
+        container.replaceWith(newContent);
+
+        if (val !== currentName || bgVal !== (niv.qcm_bg || null) || themeVal !== (niv.qcm_theme || null)) {
+          try {
+            await ActivitesApi.updateNiveau(id, { Name_Niv: val, qcm_bg: bgVal, qcm_theme: themeVal });
+          } catch (err) {
+            newH3.innerHTML = currentName + (qcmInfo.length ? ' <span class="text-xs text-gray-400">(' + qcmInfo.join(', ') + ')</span>' : '');
+          }
+        }
       }
-    }
-    input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
-    input.addEventListener("blur", save);
+
+      nameInput.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+      nameInput.addEventListener("blur", doSave);
+    });
   });
 }
 

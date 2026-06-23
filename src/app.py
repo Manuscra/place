@@ -6,7 +6,7 @@ import sqlite3
 import sys
 
 import requests
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
 from flask_session import Session
 from pydantic import ValidationError
 
@@ -351,7 +351,13 @@ def create_app(testing=False, run_migrations=True):
 
     @app.route("/qcm/<int:niv_id>")
     def qcm_page(niv_id):
-        return render_template("qcm.html", niv_id=niv_id)
+        from src.models.activite import Niveau
+        niv = db.session.get(Niveau, niv_id)
+        if not niv:
+            abort(404)
+        if not niv.qcm_active:
+            abort(404)
+        return render_template("qcm.html", niv=niv)
 
     @app.route("/positionnement")
     def positionnement_page():

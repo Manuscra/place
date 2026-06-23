@@ -218,7 +218,12 @@ def list_niveaux():
 @activites_bp.route("/niveaux", methods=["POST"])
 def create_niveau():
     data = NiveauCreate.model_validate(request.get_json(silent=True) or {})
-    niv = Niveau(Name_Niv=data.Name_Niv)
+    niv = Niveau(
+        Name_Niv=data.Name_Niv,
+        qcm_active=data.qcm_active if data.qcm_active is not None else 1,
+        qcm_bg=data.qcm_bg,
+        qcm_theme=data.qcm_theme,
+    )
     db.session.add(niv)
     db.session.commit()
     return jsonify(NiveauOut.model_validate(niv).model_dump()), 201

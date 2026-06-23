@@ -80,6 +80,9 @@ class Niveau(db.Model):
 
     No_Niv = db.Column("No_Niv", db.Integer, primary_key=True, autoincrement=True)
     Name_Niv = db.Column("Name_Niv", db.Text, nullable=False)
+    qcm_active = db.Column("qcm_active", db.Integer, nullable=False, default=1)
+    qcm_bg = db.Column("qcm_bg", db.Text, nullable=True)
+    qcm_theme = db.Column("qcm_theme", db.Text, nullable=True)
 
 
 class Reponse(db.Model):

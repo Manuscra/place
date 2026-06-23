@@ -70,7 +70,8 @@ body.qcm-page {
   transition: color 0.2s, background-color 0.2s;
 }
 
-.qcm-menu-bar > ul > li:first-child > a {
+.qcm-menu-bar > ul > li:first-child > a,
+.qcm-menu-bar > ul > li:first-child > span {
   border-left: none;
 }
 
@@ -83,6 +84,20 @@ body.qcm-page {
 /* --- Home link --- */
 .qcm-menu-bar .qcm-home > a {
   font-weight: bold;
+}
+
+/* --- Level name badge --- */
+.qcm-menu-bar .qcm-niv-name > span {
+  display: block;
+  float: left;
+  height: 28px;
+  line-height: 28px;
+  padding: 0 16px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 /* --- Dropdown sub-menus --- */

@@ -4,7 +4,7 @@
    ========================================================================= */
 
 var QcmMenu = (function () {
-  function build(chapitres, container) {
+  function build(chapitres, container, nivName) {
     container.innerHTML = "";
     if (!chapitres || !chapitres.length) {
       container.innerHTML = "<p>Aucune activit&eacute; pour ce niveau.</p>";
@@ -13,6 +13,16 @@ var QcmMenu = (function () {
 
     var ul = document.createElement("ul");
     ul.className = "qcm-menu-bar";
+
+    // Level name
+    if (nivName) {
+      var nivLi = document.createElement("li");
+      nivLi.className = "qcm-niv-name";
+      var nivSpan = document.createElement("span");
+      nivSpan.textContent = nivName;
+      nivLi.appendChild(nivSpan);
+      ul.appendChild(nivLi);
+    }
 
     // Home link
     var homeLi = document.createElement("li");
