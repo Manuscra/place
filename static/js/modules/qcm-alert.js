@@ -11,6 +11,11 @@
       title = "R&eacute;sultat";
     }
 
+    // Backdrop
+    var backdrop = document.createElement("div");
+    backdrop.className = "qcm-alert-backdrop";
+    document.body.appendChild(backdrop);
+
     var box = document.createElement("div");
     box.className = "qcm-alert-box";
 
@@ -24,11 +29,7 @@
     var closeBtn = document.createElement("button");
     closeBtn.className = "qcm-alert-close";
     closeBtn.textContent = "\u2715";
-    closeBtn.onclick = function () {
-      if (box.parentNode) {
-        box.parentNode.removeChild(box);
-      }
-    };
+    closeBtn.onclick = close;
     box.appendChild(closeBtn);
 
     // Content
@@ -39,11 +40,15 @@
 
     document.body.appendChild(box);
 
-    // Center vertically
-    function reposition() {
-      box.style.marginTop = -(box.offsetHeight / 2) + "px";
+    function close() {
+      if (box.parentNode) box.parentNode.removeChild(box);
+      if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
     }
-    reposition();
-    setInterval(reposition, 200);
+
+    // Close on backdrop click
+    backdrop.onclick = close;
+
+    // Center vertically
+    box.style.marginTop = -(box.offsetHeight / 2) + "px";
   };
 })();

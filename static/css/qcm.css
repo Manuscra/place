@@ -277,9 +277,16 @@ p.qcm-what {
    Custom alert — ported from new_alert.js
    ========================================================================= */
 
+.qcm-alert-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.35);
+}
+
 .qcm-alert-box {
-  position: absolute;
-  z-index: 9998;
+  position: fixed;
+  z-index: 10000;
   overflow: hidden;
   left: 50%;
   top: 50%;
@@ -287,11 +294,11 @@ p.qcm-what {
   min-height: 160px;
   max-height: 480px;
   margin-left: -180px;
-  border: 1px solid var(--qcm-head);
-  background-color: var(--qcm-bg);
+  border: 2px solid var(--qcm-head);
+  background-color: #ffffff;
   font-family: sans-serif;
   border-radius: 10px;
-  box-shadow: 2px 2px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
   animation: qcm-alert-in 0.25s ease-out;
 }
 
@@ -310,7 +317,7 @@ p.qcm-what {
 .qcm-alert-close {
   position: absolute;
   cursor: pointer;
-  z-index: 9999;
+  z-index: 10001;
   right: 2px;
   top: 2px;
   background: none;

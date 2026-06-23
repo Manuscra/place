@@ -780,7 +780,7 @@ def get_niveau_chapitres(niv_id):
     type_quizz = TypeActivite.query.filter_by(Name_Type="quizz").first()
     quizz_id = type_quizz.No_Type if type_quizz else 1
 
-    attr_nivs = AttribNiv.query.filter_by(No_dNiv=niv_id).order_by(AttribNiv.No_Niv_Attrib).all()
+    attr_nivs = AttribNiv.query.filter_by(No_dNiv=niv_id).order_by(AttribNiv.No_dChap).all()
 
     chap_activites = []
     for an in attr_nivs:
