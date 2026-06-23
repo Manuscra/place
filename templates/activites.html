@@ -36,19 +36,19 @@
 
 <!-- Sub-tabs -->
 <div class="flex gap-2 mb-6 border-b pb-0 overflow-x-auto">
-  <span class="subtab subtab-active" data-tab="activites">Activités</span>
+  <span class="subtab subtab-active" data-tab="niveaux">Niveaux</span>
   <span class="subtab" data-tab="chapitres">Chapitres</span>
-  <span class="subtab" data-tab="niveaux">Niveaux</span>
+  <span class="subtab" data-tab="attributions">Attributions</span>
   <span class="subtab" data-tab="images">Images</span>
   <span class="subtab" data-tab="liens">Liens</span>
+  <span class="subtab" data-tab="activites">Activités</span>
   <span class="subtab" data-tab="reponses">Réponses</span>
-  <span class="subtab" data-tab="attributions">Attributions</span>
-  <span class="subtab" data-tab="positionnement" style="cursor:pointer">↗ Positionnement</span>
   <span class="subtab" data-tab="listes">Listes</span>
+  <span class="subtab" data-tab="positionnement" style="cursor:pointer">↗ Positionnement</span>
 </div>
 
 <!-- Tab: Activités -->
-<div id="tab-activites" class="tab-content">
+<div id="tab-activites" class="tab-content hidden">
   <div class="bg-white rounded-lg shadow p-6 mb-8">
     <form id="create-activite">
       <div class="flex items-center gap-3 mb-3">
@@ -84,7 +84,7 @@
 </div>
 
 <!-- Tab: Niveaux -->
-<div id="tab-niveaux" class="tab-content hidden">
+<div id="tab-niveaux" class="tab-content">
   <div class="bg-white rounded-lg shadow p-6 mb-8">
     <form id="create-niveau" class="flex flex-wrap items-center gap-3">
       <input type="text" name="Name_Niv" placeholder="Nom du niveau" required

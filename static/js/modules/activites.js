@@ -202,7 +202,7 @@ async function renameActivite(card) {
 }
 
 if (document.getElementById("activites-list")) {
-  loadActivites();
+  loadNiveaux();
   document.getElementById("activites-list").addEventListener("click", function(e) {
     if (e.target.closest("button, input, form, textarea, select, a")) return;
     var card = e.target.closest("[data-id]");
