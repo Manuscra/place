@@ -114,7 +114,8 @@ async function loadActivites() {
       resSelector += '</select>';
     }
 
-    return '<div class="bg-white rounded-lg shadow p-4" data-id="' + a.No_Act + '">' +
+    var cardBg = a.Type_Act === 1 ? 'bg-blue-50' : 'bg-green-50';
+    return '<div class="' + cardBg + ' rounded-lg shadow p-4 border ' + (a.Type_Act === 1 ? 'border-blue-100' : 'border-green-100') + '" data-id="' + a.No_Act + '">' +
       '<div class="card-row">' +
         '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center gap-2 mb-1">' +
@@ -418,8 +419,17 @@ if (document.getElementById("niveaux-list")) {
         }
       }
 
-      nameInput.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
-      nameInput.addEventListener("blur", doSave);
+      function setupInlineInput(input) {
+        input.addEventListener("keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); doSave(); } });
+        input.addEventListener("blur", function() {
+          setTimeout(function() {
+            if (!form.contains(document.activeElement)) { doSave(); }
+          }, 150);
+        });
+      }
+      setupInlineInput(nameInput);
+      setupInlineInput(bgInput);
+      setupInlineInput(themeInput);
     });
   });
 }
@@ -690,7 +700,8 @@ function renderAttribAC() {
     html += "</tr></thead><tbody>";
 
     allAttribActivites.forEach(function(a) {
-      html += "<tr><td class=\"chap-name\">" + a.Name_Act + "</td>";
+      var rowClass = a.Type_Act === 1 ? 'act-quizz' : 'act-lien';
+      html += "<tr class=\"" + rowClass + "\"><td class=\"chap-name\">" + a.Name_Act + "</td>";
       allAttribChapitres.forEach(function(c) {
         var checked = links[a.No_Act + "-" + c.No_chap] || false;
         html += "<td><input type=\"checkbox\" data-act=\"" + a.No_Act + "\" data-chap=\"" + c.No_chap + "\"" + (checked ? " checked" : "") + "></td>";
@@ -738,7 +749,8 @@ function renderAttribAN() {
     html += "</tr></thead><tbody>";
 
     allAttribActivites.forEach(function(a) {
-      html += "<tr><td class=\"chap-name\">" + a.Name_Act + "</td>";
+      var rowClass = a.Type_Act === 1 ? 'act-quizz' : 'act-lien';
+      html += "<tr class=\"" + rowClass + "\"><td class=\"chap-name\">" + a.Name_Act + "</td>";
       allAttribNiveaux.forEach(function(n) {
         var checked = links[a.No_Act + "-" + n.No_Niv] || false;
         html += "<td><input type=\"checkbox\" data-act=\"" + a.No_Act + "\" data-niv=\"" + n.No_Niv + "\"" + (checked ? " checked" : "") + "></td>";

@@ -30,6 +30,10 @@
   .qcm-toggle::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; background: white; border-radius: 50%; transition: transform 0.2s; }
   .qcm-toggle.active { background: #6366f1; }
   .qcm-toggle.active::after { transform: translateX(12px); }
+  tr.act-quizz td { background-color: #eff6ff; }
+  tr.act-lien td { background-color: #f0fdf4; }
+  tr.act-quizz:hover td { background-color: #dbeafe; }
+  tr.act-lien:hover td { background-color: #dcfce7; }
 </style>
 {% endblock %}
 {% block content %}
