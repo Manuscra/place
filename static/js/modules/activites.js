@@ -158,6 +158,10 @@ async function changeActLien(id, lienId) {
   } catch (err) { toast(err.message, "error"); }
 }
 
+function exportActivitesCSV() {
+  window.location.href = API_BASE + "/api/activites/export-csv";
+}
+
 async function deleteActivite(id) {
   if (!confirm("Supprimer cette activité ?")) return;
   try {

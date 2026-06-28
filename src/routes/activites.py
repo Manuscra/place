@@ -42,6 +42,40 @@ def list_activites():
     return jsonify([_enrich_activite(a) for a in activites])
 
 
+@activites_bp.route("/export-csv", methods=["GET"])
+def export_activites_csv():
+    import csv
+    import io
+
+    activites = Activite.query.order_by(Activite.Type_Act, Activite.Name_Act).all()
+    rows = [_enrich_activite(a) for a in activites]
+
+    output = io.StringIO()
+    output.write("\ufeff")  # BOM for Excel
+    writer = csv.writer(output)
+    writer.writerow(["ID", "Nom", "Type", "Image", "Lien", "Chapitres", "Niveaux"])
+    for a in rows:
+        type_label = "Quizz" if a.get("Type_Act") == 1 else "Lien"
+        writer.writerow([
+            a.get("No_Act", ""),
+            a.get("Name_Act", ""),
+            type_label,
+            a.get("img_name") or "",
+            a.get("lien_url") or "",
+            ", ".join(a.get("chapitre_names") or []),
+            ", ".join(a.get("niveau_names") or []),
+        ])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    return Response(
+        csv_data,
+        mimetype="text/csv",
+        headers={"Content-Disposition": "attachment; filename=activites.csv"},
+    )
+
+
 @activites_bp.route("/<int:activite_id>", methods=["GET"])
 def get_activite(activite_id):
     a = db.session.get(Activite, activite_id)
