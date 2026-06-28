@@ -845,6 +845,7 @@ def get_niveau_chapitres(niv_id):
 
     for chap_id, act_id in chap_activites:
         if chap_id != current_chap_id:
+            activites_list.sort(key=lambda a: a["Act_Name"])
             current_entry["Activites"] = activites_list
             chapitres.append(current_entry)
             current_chap_id = chap_id
@@ -857,6 +858,7 @@ def get_niveau_chapitres(niv_id):
             type_name = "quizz" if act.Type_Act == quizz_id else "lien"
             activites_list.append(_build_activite(act, type_name))
 
+    activites_list.sort(key=lambda a: a["Act_Name"])
     current_entry["Activites"] = activites_list
     chapitres.append(current_entry)
 
