@@ -26,14 +26,7 @@ jobs:
           env/bin/pip install -r requirements-dev.txt
 
       - name: Lint with ruff
-        run: |
-          echo "=== which ruff ==="
-          env/bin/ruff --version || echo "ruff not found!"
-          echo "=== ruff check ==="
-          env/bin/ruff check . > /tmp/ruff-output.txt 2>&1
-          RC=$?
-          cat /tmp/ruff-output.txt
-          exit $RC
+        uses: astral-sh/ruff-action@v3
 
       - name: Verify migrations are valid
         run: |
