@@ -26,9 +26,10 @@ jobs:
           env/bin/pip install -r requirements-dev.txt
 
       - name: Lint with ruff
-        uses: astral-sh/ruff-action@v3
-        with:
-          version: "0.16.0"
+        run: |
+          env/bin/ruff check . --show-settings 2>&1 | grep -E "isort|lines-between"
+          env/bin/ruff check . 2>&1
+          echo "ruff exit: $?"
 
       - name: Verify migrations are valid
         run: |

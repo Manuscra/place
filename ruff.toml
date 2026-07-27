@@ -1,4 +1,2 @@
-required-version = "0.16.0"
-
 [lint.isort]
 lines-between-types = 1
