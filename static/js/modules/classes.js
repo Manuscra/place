@@ -15,10 +15,10 @@ if (document.getElementById("create-classe")) {
 
 if (document.getElementById("reset-db")) {
   document.getElementById("reset-db").addEventListener("click", async () => {
-    if (!confirm("Vider complètement la base de données ? Cette action est irréversible.")) return;
+    if (!confirm("Supprimer toutes les données élèves ? Cette action est irréversible.")) return;
     try {
       await ClassesApi.reset();
-      toast("Base de données vidée.");
+      toast("Données élèves supprimées.");
       loadClasses();
     } catch (err) { toast(err.message, "error"); }
   });
