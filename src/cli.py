@@ -10,7 +10,6 @@ from src.models import User
 @click.group()
 def cli():
     """Management commands."""
-    pass
 
 
 @cli.command()

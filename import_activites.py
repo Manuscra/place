@@ -1,7 +1,8 @@
 """Import data from MySQL duss_activites into SQLite."""
-import pymysql
 import sqlite3
 from pathlib import Path
+
+import pymysql
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "place.db"

@@ -4,17 +4,17 @@ Revision ID: d364068c2502
 Revises: 3b34dcf81a6b
 Create Date: 2026-06-23 13:44:42.874391
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
+from alembic import op
 
 revision: str = 'd364068c2502'
-down_revision: Union[str, None] = '3b34dcf81a6b'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = '3b34dcf81a6b'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def _table_exists(name: str) -> bool:

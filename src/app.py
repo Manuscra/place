@@ -7,8 +7,9 @@ import sys
 
 import requests
 from flask import Flask, abort, jsonify, render_template, request
-from flask_session import Session
 from pydantic import ValidationError
+
+from flask_session import Session
 
 from .config import Config, ProdConfig, TestConfig
 from .database import db
@@ -143,7 +144,7 @@ def create_app(testing=False, run_migrations=True):
         
         # If user not authenticated, redirect to login
         if "user_id" not in flask_session:
-            from flask import redirect, flash
+            from flask import flash, redirect
             flash("Veuillez vous connecter.", "warning")
             return redirect(url_for("auth.login"))
 
@@ -214,7 +215,7 @@ def create_app(testing=False, run_migrations=True):
             return jsonify({"error": "Aucun fichier fourni"}), 400
 
         filename = file.filename.lower()
-        if not (filename.endswith(".csv") or filename.endswith(".xml")):
+        if not filename.endswith((".csv", ".xml")):
             return jsonify({"error": "Le fichier doit être un .csv"}), 400
 
         raw = file.read()
@@ -287,7 +288,7 @@ def create_app(testing=False, run_migrations=True):
         }
 
         # Normaliser les en-têtes (strip + uppercase)
-        fieldnames = [name.strip().upper() for name in rows[0].keys()]
+        fieldnames = [name.strip().upper() for name in rows[0]]
         if not all(k in fieldnames for k in header_mapping):
             return jsonify({"error": f"En-têtes attendues : {', '.join(header_mapping.keys())}. Reçu : {', '.join(fieldnames)}"}), 400
 

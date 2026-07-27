@@ -16,7 +16,7 @@ os.environ.setdefault("DATABASE_URL", f"sqlite:///{_base}/place.db")
 try:
     from src.app import create_app
     app = create_app()
-except Exception:
+except Exception:  # noqa: BLE001
     import traceback
 
     from flask import Flask

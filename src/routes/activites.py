@@ -2,8 +2,41 @@ import requests
 from flask import Blueprint, Response, jsonify, request
 
 from ..database import db
-from ..models import Activite, ActAttrib, AttribChap, AttribNiv, Chap, Etiquette, Img, Lien, Liste, Niveau, Reponse, TypeActivite
-from ..schemas.activite import ActiviteCreate, ActiviteOut, ActiviteUpdate, ImgCreate, ImgOut, ImgUpdate, LienCreate, LienOut, LienUpdate, ChapCreate, ChapOut, ChapUpdate, NiveauCreate, NiveauOut, NiveauUpdate, ReponseCreate, ReponseOut, ReponseUpdate, AttribNivOut
+from ..models import (
+    ActAttrib,
+    Activite,
+    AttribChap,
+    AttribNiv,
+    Chap,
+    Etiquette,
+    Img,
+    Lien,
+    Liste,
+    Niveau,
+    Reponse,
+    TypeActivite,
+)
+from ..schemas.activite import (
+    ActiviteCreate,
+    ActiviteOut,
+    ActiviteUpdate,
+    AttribNivOut,
+    ChapCreate,
+    ChapOut,
+    ChapUpdate,
+    ImgCreate,
+    ImgOut,
+    ImgUpdate,
+    LienCreate,
+    LienOut,
+    LienUpdate,
+    NiveauCreate,
+    NiveauOut,
+    NiveauUpdate,
+    ReponseCreate,
+    ReponseOut,
+    ReponseUpdate,
+)
 
 activites_bp = Blueprint("activites", __name__, url_prefix="/api/activites")
 
@@ -598,7 +631,7 @@ PROD_IMAGE_BASE = "https://duss.alwaysdata.net/qcm/image.php"
 def image_proxy(code):
     """Proxy activity images from the production server or direct URLs."""
     try:
-        if code.startswith("http://") or code.startswith("https://"):
+        if code.startswith(("http://", "https://")):
             url = code
         else:
             url = f"{PROD_IMAGE_BASE}?img={code}"
