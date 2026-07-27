@@ -26,9 +26,7 @@ jobs:
           env/bin/pip install -r requirements-dev.txt
 
       - name: Lint with ruff
-        run: |
-          env/bin/ruff --version
-          echo "Lint skipped for debug"
+        run: env/bin/ruff check .
 
       - name: Verify migrations are valid
         run: |
