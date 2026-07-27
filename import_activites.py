@@ -1,5 +1,6 @@
 """Import data from MySQL duss_activites into SQLite."""
 import sqlite3
+
 from pathlib import Path
 
 import pymysql

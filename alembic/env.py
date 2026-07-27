@@ -1,4 +1,5 @@
 import sys
+
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -8,6 +9,7 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 import src.models  # noqa: F401 — loads metadata for autogenerate
+
 from alembic import context
 from src.app import create_app
 from src.database import db
