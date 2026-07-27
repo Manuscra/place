@@ -27,9 +27,13 @@ jobs:
 
       - name: Lint with ruff
         run: |
-          env/bin/ruff check . --show-settings 2>&1 | grep -E "isort|lines-between"
-          env/bin/ruff check . 2>&1
-          echo "ruff exit: $?"
+          echo "=== which ruff ==="
+          env/bin/ruff --version || echo "ruff not found!"
+          echo "=== ruff check ==="
+          env/bin/ruff check . > /tmp/ruff-output.txt 2>&1
+          RC=$?
+          cat /tmp/ruff-output.txt
+          exit $RC
 
       - name: Verify migrations are valid
         run: |
