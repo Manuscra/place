@@ -1,0 +1,2 @@
+[tool.ruff.lint.isort]
+lines-between-types = 0
