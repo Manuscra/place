@@ -26,7 +26,9 @@ jobs:
           env/bin/pip install -r requirements-dev.txt
 
       - name: Lint with ruff
-        run: env/bin/ruff check .
+        run: |
+          env/bin/ruff --version
+          env/bin/ruff check .
 
       - name: Verify migrations are valid
         run: |
