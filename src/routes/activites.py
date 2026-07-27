@@ -1,5 +1,4 @@
 import requests
-
 from flask import Blueprint, Response, jsonify, request
 
 from ..database import db

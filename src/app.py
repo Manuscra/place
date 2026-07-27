@@ -6,7 +6,6 @@ import sqlite3
 import sys
 
 import requests
-
 from flask import Flask, abort, jsonify, render_template, request
 from pydantic import ValidationError
 
@@ -41,7 +40,6 @@ def _needs_stamp(db_uri: str) -> bool:
 
 def _run_migrations(app, _here):
     import alembic.command
-
     from alembic.config import Config as AlembicConfig
 
     _alembic_ini = os.path.join(_here, "..", "alembic.ini")
